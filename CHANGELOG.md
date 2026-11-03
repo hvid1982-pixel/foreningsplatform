@@ -4,6 +4,10 @@ Formatet følger [Keep a Changelog](https://keepachangelog.com/da/1.1.0/). Versi
 
 ## [Unreleased]
 
+### Tilføjet
+
+- `vercel.json` med build-kommando og region (Frankfurt), så Vercel kun kræver miljøvariabler.
+
 ## [0.1.0] – Milestone 0: Fundament – 2026-11-03
 
 ### Tilføjet

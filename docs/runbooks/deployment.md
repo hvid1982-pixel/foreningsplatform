@@ -12,10 +12,8 @@ Staging kører på Vercel med en Supabase-database i EU. Hver pull request får 
 ## 2. Vercel (hosting)
 
 1. **Add New → Project** → importér GitHub-repoet `foreningsplatform`.
-2. Framework: Next.js (registreres automatisk).
-3. **Build Command:** `pnpm vercel-build` (Settings → Build and Deployment → Build Command → Override).
-4. Region for functions: **Frankfurt (fra1)** (Settings → Functions), så appen ligger tæt på databasen.
-5. Tilføj miljøvariablerne nedenfor (Settings → Environment Variables), og deploy.
+2. Build-kommando (`pnpm vercel-build`) og region (Frankfurt, `fra1`) er sat i `vercel.json` i repoet, så de skal ikke ændres i Vercel.
+3. Tilføj miljøvariablerne nedenfor (Settings → Environment Variables), og deploy.
 
 ### Miljøvariabler
 
@@ -27,8 +25,8 @@ Staging kører på Vercel med en Supabase-database i EU. Hver pull request får 
 | `EMAIL_TRANSPORT`         | `log` indtil en mailudbyder er valgt (bekræftelseslinks skrives så i Vercels logs)      | Production, Preview |
 | `EMAIL_FROM`              | `Foreningsplatform <no-reply@dit-domæne.dk>`                                            | Production, Preview |
 | `SEED_DEMO_PASSWORD`      | Adgangskode til DEMO-konti, mindst 10 tegn. Del den kun med testere.                    | Production, Preview |
-| `RUN_MIGRATIONS_ON_BUILD` | `true`                                                                                  | Production          |
-| `SEED_ON_BUILD`           | `true` (genskaber DEMO-data hvis de mangler; overskriver intet)                         | Production          |
+| `RUN_MIGRATIONS_ON_BUILD` | `true`                                                                                  | Production, Preview |
+| `SEED_ON_BUILD`           | `true` (genskaber DEMO-data hvis de mangler; overskriver intet)                         | Production, Preview |
 
 `BETTER_AUTH_URL` skal ikke sættes på Vercel; appen udleder adressen af `VERCEL_URL`, `VERCEL_BRANCH_URL` og `VERCEL_PROJECT_PRODUCTION_URL`. Sæt den kun, når et eget domæne er tilknyttet (f.eks. `https://app.dit-domæne.dk`).
 
@@ -36,8 +34,8 @@ Når en mailudbyder er valgt, sættes `EMAIL_TRANSPORT=smtp` og `SMTP_HOST`, `SM
 
 ### Migrationer på staging
 
-- Production-deployet (fra `main`) kører `pnpm db:migrate` før build, når `RUN_MIGRATIONS_ON_BUILD=true`.
-- Preview-deploys deler staging-databasen, men migrerer ikke. Et preview med en ny migration virker derfor først fuldt ud, når den er merget. Migrationer skrives bagudkompatible (se CHANGE_PROCESS), så det ikke ødelægger noget.
+- Hver build kører `pnpm db:migrate`, når `RUN_MIGRATIONS_ON_BUILD=true`.
+- I pilotfasen deler Production og Preview én staging-database, og begge migrerer, så et preview-link kan vises, før pull requesten merges. Det er acceptabelt, fordi migrationer skrives bagudkompatible (se CHANGE_PROCESS). Når der kommer flere udviklere eller et rigtigt produktionsmiljø, får Preview sin egen database, eller `RUN_MIGRATIONS_ON_BUILD` slås fra i Preview.
 
 ## 3. Efter første deploy
 
