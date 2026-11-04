@@ -11,6 +11,7 @@ Formatet følger [Keep a Changelog](https://keepachangelog.com/da/1.1.0/). Versi
 ### Rettet
 
 - Sider på Vercel kunne hænge i 5 minutter og give timeout. Databasedriveren er skiftet fra postgres.js til node-postgres med timeouts og `attachDatabasePool` (ADR-012).
+- Node-versionen er låst til 22.x (`engines`), så Vercel bygger med samme version som CI og lokal udvikling.
 
 ## [0.1.0] – Milestone 0: Fundament – 2026-11-03
 

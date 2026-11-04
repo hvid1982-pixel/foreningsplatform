@@ -64,6 +64,6 @@
   "packageManager": "pnpm@10.28.0",
   "description": "Markedsplads hvor virksomheder køber eksponering og aktivering hos foreninger.",
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   }
 }
