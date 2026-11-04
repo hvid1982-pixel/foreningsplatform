@@ -3,9 +3,11 @@
  *
  *   pnpm db:seed
  *
- * - Always: catalog categories, configuration defaults, platform organization.
+ * - Always: catalog (categories, standard products, industries), configuration
+ *   defaults, platform organization.
  * - DEMO data: one platform admin, two associations and two companies, each
- *   with a user. All demo organizations are flagged `is_demo` and named "DEMO …".
+ *   with a user; the active association gets a full profile and offerings.
+ *   All demo organizations are flagged `is_demo` and named "DEMO …".
  *
  * Refuses to run when APP_ENV=production. Outside development/test the demo
  * password must be provided via SEED_DEMO_PASSWORD.
@@ -14,7 +16,8 @@ import { closeDb, db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { recordAuditEvent } from "@/modules/audit/service";
-import { ensureInitialCategories } from "@/modules/catalog/service";
+import { ensureDemoSupply } from "@/modules/associations/provisioning";
+import { ensureInitialCatalog } from "@/modules/catalog/service";
 import { ensureConfigDefaults } from "@/modules/config/service";
 import {
   ensureMembership,
@@ -62,7 +65,7 @@ export async function seed(): Promise<void> {
   const password = demoPassword();
   if (password.length < 10) throw new Error("SEED_DEMO_PASSWORD skal være mindst 10 tegn.");
 
-  await ensureInitialCategories(db);
+  await ensureInitialCatalog(db);
   await ensureConfigDefaults(db);
   const platformId = await ensurePlatformOrganization(db);
 
@@ -77,6 +80,13 @@ export async function seed(): Promise<void> {
         ? platformId
         : await ensureOrganization(db, { ...account.organization, isDemo: true });
     await ensureMembership(db, { userId, organizationId });
+    if (
+      account.organization !== "platform" &&
+      account.organization.type === "association" &&
+      account.organization.status === "active"
+    ) {
+      await ensureDemoSupply(db, organizationId);
+    }
   }
 
   await recordAuditEvent(db, {

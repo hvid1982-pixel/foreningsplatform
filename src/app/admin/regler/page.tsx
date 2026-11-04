@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
+import { ServerForm, SubmitButton, TextField } from "@/components/forms/server-form";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { db } from "@/lib/db";
@@ -9,6 +10,7 @@ import { configDefinitions } from "@/modules/config/definitions";
 import { listConfig, type ResolvedConfig } from "@/modules/config/service";
 import { da } from "@/messages/da";
 import { requirePlatformAdmin } from "@/server/session";
+import { setConfigAction } from "../actions";
 
 export const metadata: Metadata = { title: da.admin.configTitle };
 
@@ -57,7 +59,37 @@ async function ConfigTable() {
                   <div className="font-medium">{definition.label}</div>
                   <div className="text-xs text-muted-foreground">{definition.description}</div>
                 </TableCell>
-                <TableCell className="tabular-nums">{formatValue(row.value)}</TableCell>
+                <TableCell className="tabular-nums">
+                  {formatValue(row.value)}
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-muted-foreground underline">
+                      {da.admin.configEdit}
+                    </summary>
+                    <ServerForm action={setConfigAction} className="mt-3 min-w-64 gap-3">
+                      <input type="hidden" name="key" value={row.key} />
+                      <TextField
+                        name="value"
+                        label={da.admin.configNewValue}
+                        hint={
+                          typeof definition.defaultValue === "boolean"
+                            ? "true / false"
+                            : definition.defaultValue === null || row.value === null
+                              ? da.admin.configNullHint
+                              : undefined
+                        }
+                        defaultValue={row.value === null ? "" : String(row.value)}
+                      />
+                      <TextField name="note" label={da.admin.configNote} />
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" name="approved" defaultChecked={row.status === "approved"} />
+                        {da.admin.configMarkApproved}
+                      </label>
+                      <div>
+                        <SubmitButton variant="outline">{da.admin.configSave}</SubmitButton>
+                      </div>
+                    </ServerForm>
+                  </details>
+                </TableCell>
                 <TableCell>
                   <StatusBadge status={row.status} />
                 </TableCell>
