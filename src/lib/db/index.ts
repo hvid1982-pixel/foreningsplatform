@@ -23,8 +23,9 @@ function createPool(): Pool {
     max: isLocal ? 5 : 3,
     idleTimeoutMillis: 5_000,
     connectionTimeoutMillis: 10_000,
+    // Client-side timeout. Do not use `statement_timeout`: node-postgres sends
+    // it as a startup parameter, which connection poolers may reject.
     query_timeout: 15_000,
-    statement_timeout: 15_000,
   });
   // An idle client that errors (e.g. the server closed it) must not crash the process.
   pool.on("error", () => {});

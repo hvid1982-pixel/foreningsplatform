@@ -66,7 +66,7 @@ Supabase kan eksponere `public`-skemaet via et automatisk REST-API. RLS uden pol
 
 2026-11-04 · Besluttet
 
-På Vercel (Fluid compute) sættes instanser på pause mellem requests. Med postgres.js blev forbindelser stående halvdøde, og da driveren ikke har en forespørgsels-timeout, hang sider, til Vercel stoppede dem efter 300 sekunder. Appen bruger nu `pg` (node-postgres) med en lille pool, `idleTimeoutMillis` 5 s, forbindelses-timeout 10 s og forespørgsels-/statement-timeout 15 s, og registrerer poolen med `attachDatabasePool` fra `@vercel/functions`, så Vercel lukker ledige forbindelser, før en instans pauses. node-postgres bruger ikke navngivne prepared statements, så Supabases Transaction pooler virker uændret.
+På Vercel (Fluid compute) sættes instanser på pause mellem requests. Med postgres.js blev forbindelser stående halvdøde, og da driveren ikke har en forespørgsels-timeout, hang sider, til Vercel stoppede dem efter 300 sekunder. Appen bruger nu `pg` (node-postgres) med en lille pool, `idleTimeoutMillis` 5 s, forbindelses-timeout 10 s og forespørgsels-timeout 15 s (på klientsiden; `statement_timeout` sendes som startparameter, som poolere kan afvise), og registrerer poolen med `attachDatabasePool` fra `@vercel/functions`, så Vercel lukker ledige forbindelser, før en instans pauses. node-postgres bruger ikke navngivne prepared statements, så Supabases Transaction pooler virker uændret.
 
 ## Produkt- og forretningsstandardvalg
 
