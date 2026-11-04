@@ -13,3 +13,10 @@ export function formatDateTime(value: Date): string {
 export function formatDate(value: Date): string {
   return dateOnly.format(value);
 }
+
+const integer = new Intl.NumberFormat("da-DK", { maximumFractionDigits: 0 });
+
+/** "1.800" */
+export function formatNumber(value: number): string {
+  return integer.format(value);
+}

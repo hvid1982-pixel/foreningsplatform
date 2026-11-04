@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
@@ -45,10 +46,13 @@ async function OrganizationsTable() {
             {organizations.map((org) => (
               <TableRow key={org.id}>
                 <TableCell className="font-medium">
-                  <span className="flex items-center gap-2">
+                  <Link
+                    href={`/admin/organisationer/${org.id}`}
+                    className="flex items-center gap-2 underline-offset-4 hover:underline"
+                  >
                     {org.name}
                     {org.isDemo && <DemoBadge />}
-                  </span>
+                  </Link>
                 </TableCell>
                 <TableCell>{da.organizationType[org.type]}</TableCell>
                 <TableCell>
