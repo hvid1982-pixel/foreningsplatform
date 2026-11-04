@@ -18,10 +18,7 @@ test("navigation i admin viser straks en indlæsningstilstand", async ({ page })
     await route.continue();
   });
 
-  await page
-    .getByRole("navigation", { name: "Admin" })
-    .getByRole("link", { name: "Organisationer" })
-    .click();
+  await page.getByRole("navigation", { name: "Admin" }).getByRole("link", { name: "Organisationer" }).click();
   await expect(page.locator("[aria-busy=true]")).toBeVisible({ timeout: 1_000 });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Organisationer", { timeout: 10_000 });
 });
