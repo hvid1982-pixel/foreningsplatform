@@ -6,7 +6,7 @@ Formatet følger [Keep a Changelog](https://keepachangelog.com/da/1.1.0/). Versi
 
 ### Tilføjet
 
-- `vercel.json` med build-kommando og region (Frankfurt), så Vercel kun kræver miljøvariabler.
+- `vercel.json` med build-kommando og region (Dublin, samme som databasen), så Vercel kun kræver miljøvariabler.
 
 ## [0.1.0] – Milestone 0: Fundament – 2026-11-03
 

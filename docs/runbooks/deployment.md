@@ -4,7 +4,7 @@ Staging kører på Vercel med en Supabase-database i EU. Hver pull request får 
 
 ## 1. Supabase (database)
 
-1. Opret et projekt i region **Central EU (Frankfurt)**, f.eks. `foreningsplatform-staging`. Gem databaseadgangskoden i en password manager.
+1. Opret et projekt i en EU-region (staging ligger i **West EU (Ireland)**, `eu-west-1`), f.eks. `foreningsplatform-staging`. Gem databaseadgangskoden i en password manager.
 2. **Slå Data API fra:** Project Settings → Data API → slå den automatiske REST-API fra. Appen bruger den ikke. (Alle tabeller har desuden RLS slået til uden politikker som ekstra sikring, se ADR-011.)
 3. Find forbindelsesstrengen: klik **Connect** øverst i projektet → **Transaction pooler** (port 6543) → kopiér URI'en og indsæt din databaseadgangskode i stedet for `[YOUR-PASSWORD]`.
    - Transaction pooler er nødvendig på Vercel (serverless). Appen har prepared statements slået fra, så det virker.
@@ -12,7 +12,7 @@ Staging kører på Vercel med en Supabase-database i EU. Hver pull request får 
 ## 2. Vercel (hosting)
 
 1. **Add New → Project** → importér GitHub-repoet `foreningsplatform`.
-2. Build-kommando (`pnpm vercel-build`) og region (Frankfurt, `fra1`) er sat i `vercel.json` i repoet, så de skal ikke ændres i Vercel.
+2. Build-kommando (`pnpm vercel-build`) og region (Dublin, `dub1`, tæt på databasen) er sat i `vercel.json` i repoet, så de skal ikke ændres i Vercel. Flyttes databasen, så ret `regions` i `vercel.json` til den nærmeste Vercel-region.
 3. Tilføj miljøvariablerne nedenfor (Settings → Environment Variables), og deploy.
 
 ### Miljøvariabler
