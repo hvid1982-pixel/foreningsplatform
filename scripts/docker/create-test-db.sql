@@ -1,0 +1,1 @@
+CREATE DATABASE foreningsplatform_test OWNER foreningsplatform;
