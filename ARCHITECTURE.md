@@ -20,7 +20,7 @@ src/modules/*      Forretningslogik. Ren TypeScript uden Next.js/React (håndhæ
   │   validation.ts   Zod-skemaer, delt med formularer.
   │   schema.ts       Drizzle-tabeller for modulet.
   ▼
-src/lib            Infrastruktur: db (Drizzle/postgres.js), auth (Better Auth), email, env, logger, money.
+src/lib            Infrastruktur: db (Drizzle/node-postgres, se ADR-012), auth (Better Auth), email, env, logger, money.
   ▼
 PostgreSQL         Tabeller, constraints, migrationer (drizzle/), audit-trigger.
 ```

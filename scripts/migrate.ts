@@ -2,7 +2,7 @@
  * Applies pending SQL migrations from ./drizzle.
  * Usage: pnpm db:migrate   (reads DATABASE_URL from .env or the environment)
  */
-import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { closeDb, db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 

@@ -23,6 +23,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm format:check && pnpm test"
   },
   "dependencies": {
+    "@vercel/functions": "^3.10.6",
     "better-auth": "^1.7.15",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -30,8 +31,8 @@
     "lucide-react": "^1.67.0",
     "next": "16.4.4",
     "nodemailer": "^10.3.1",
+    "pg": "^8.23.1",
     "pino": "^10.4.0",
-    "postgres": "^4.0.0",
     "radix-ui": "^1.8.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -44,6 +45,7 @@
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.2.1",

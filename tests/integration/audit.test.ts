@@ -12,7 +12,9 @@ describe("audit trail", () => {
     await recordAuditEvent(db, { actor: null, action: "test.event", entityType: "test" });
     await expect(db.update(auditEvents).set({ action: "tampered" })).rejects.toThrow();
     await expect(db.delete(auditEvents)).rejects.toThrow();
-    const [{ count }] = await db.execute<{ count: string }>(sql`select count(*) from audit_events`);
+    const {
+      rows: [{ count }],
+    } = await db.execute<{ count: string }>(sql`select count(*) from audit_events`);
     expect(Number(count)).toBe(1);
   });
 

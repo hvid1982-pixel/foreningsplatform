@@ -5,17 +5,17 @@
  *   pnpm db:reset
  */
 import { execSync } from "node:child_process";
-import postgres from "postgres";
+import { Pool } from "pg";
 
 async function main() {
   if ((process.env.APP_ENV ?? "development") !== "development") {
     throw new Error("db:reset må kun køre med APP_ENV=development.");
   }
-  const sql = postgres(process.env.DATABASE_URL ?? "", { onnotice: () => {} });
-  await sql.unsafe(
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL ?? "", max: 1 });
+  await pool.query(
     "DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP SCHEMA IF EXISTS drizzle CASCADE;",
   );
-  await sql.end();
+  await pool.end();
   execSync("pnpm db:migrate && pnpm db:seed", { stdio: "inherit" });
 }
 

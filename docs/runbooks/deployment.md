@@ -60,3 +60,4 @@ Før pilot med rigtige virksomheder og penge oprettes et **separat** Supabase-pr
 | `/api/health` giver 503                       | `DATABASE_URL` er forkert, eller adgangskoden indeholder specialtegn, der skal URL-kodes. |
 | "prepared statement already exists"           | Der bruges en session-pooler-URL; skift til Transaction pooler (port 6543).               |
 | Login virker ikke på et preview-link          | Tjek at `BETTER_AUTH_URL` IKKE er sat i Preview-miljøet.                                  |
+| Sider hænger, eller "Task timed out"          | Tjek `/api/health`. Databasekald afbrydes efter 15 s (ADR-012); se fejlen i Vercels logs. |

@@ -1,35 +1,45 @@
 /**
- * Database client (Drizzle on top of postgres.js).
+ * Database client (server only).
  *
- * A single pooled client is reused per server instance. On serverless hosts use
- * a transaction-mode pooler URL (Supabase: port 6543); prepared statements are
- * disabled so that works. See docs/runbooks/deployment.md.
+ * Uses node-postgres with a small pool and hard timeouts. On Vercel (Fluid
+ * compute) instances are suspended between requests, which can leave sockets
+ * stale; `attachDatabasePool` lets Vercel close idle clients before an
+ * instance is suspended, and the timeouts make sure a query never hangs until
+ * the function's 300 s limit. See ADR-012.
  */
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { attachDatabasePool } from "@vercel/functions";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "@/db/schema";
 import { env } from "@/lib/env";
 
-export type Database = PostgresJsDatabase<typeof schema>;
+export type Database = NodePgDatabase<typeof schema>;
 
-const globalForDb = globalThis as unknown as { pgClient?: postgres.Sql };
+const isLocal = env.APP_ENV === "development" || env.APP_ENV === "test";
 
-const client =
-  globalForDb.pgClient ??
-  postgres(env.DATABASE_URL, {
-    prepare: false,
-    max: env.APP_ENV === "development" || env.APP_ENV === "test" ? 5 : 3,
-    onnotice: () => {},
+function createPool(): Pool {
+  const pool = new Pool({
+    connectionString: env.DATABASE_URL,
+    max: isLocal ? 5 : 3,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 10_000,
+    query_timeout: 15_000,
+    statement_timeout: 15_000,
   });
-
-if (env.APP_ENV !== "production") globalForDb.pgClient = client;
-
-export const db: Database = drizzle(client, { schema, casing: "snake_case" });
-
-/** Closes the pool. Only for scripts and tests. */
-export async function closeDb(): Promise<void> {
-  await client.end({ timeout: 5 });
+  // An idle client that errors (e.g. the server closed it) must not crash the process.
+  pool.on("error", () => {});
+  if (process.env.VERCEL) attachDatabasePool(pool);
+  return pool;
 }
 
-/** A database handle or an open transaction; services accept either. */
+const globalForDb = globalThis as unknown as { pgPool?: Pool };
+const pool = globalForDb.pgPool ?? createPool();
+if (env.APP_ENV !== "production") globalForDb.pgPool = pool;
+
+export const db: Database = drizzle(pool, { schema, casing: "snake_case" });
+
+export async function closeDb(): Promise<void> {
+  await pool.end();
+}
+
 export type DbOrTx = Database | Parameters<Parameters<Database["transaction"]>[0]>[0];

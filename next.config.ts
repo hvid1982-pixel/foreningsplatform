@@ -10,7 +10,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  serverExternalPackages: ["pino", "nodemailer"],
+  serverExternalPackages: ["pino", "nodemailer", "pg"],
   poweredByHeader: false,
   turbopack: {
     rules: {
