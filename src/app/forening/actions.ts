@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { isDomainError } from "@/lib/errors";
 import {
-  addChannel,
+  addChannels,
   addLocation,
   archiveChannel,
   archiveLocation,
@@ -23,8 +23,11 @@ import {
   saveAssociationProfile,
   saveIndustryExclusions,
   submitAssociationForReview,
+  updateChannel,
+  updateLocation,
   updateOffering,
 } from "@/modules/associations/service";
+import { channelSchema } from "@/modules/associations/validation";
 import type {
   AssociationIdentityInput,
   AssociationProfileInput,
@@ -69,7 +72,7 @@ export async function saveIdentityAction(_state: FormState, formData: FormData):
 
 export async function saveProfileAction(_state: FormState, formData: FormData): Promise<FormState> {
   const { actor, organizationId } = await currentAssociation();
-  const values = formValues(formData, ["memberAgeBands"]);
+  const values = formValues(formData, ["memberAgeBands", "audienceSegments"]);
   try {
     await saveAssociationProfile(db, actor, organizationId, values as unknown as AssociationProfileInput);
   } catch (error) {
@@ -78,16 +81,61 @@ export async function saveProfileAction(_state: FormState, formData: FormData): 
   return afterSave(organizationId, "profil", actor);
 }
 
-export async function addChannelAction(_state: FormState, formData: FormData): Promise<FormState> {
+/** Adds every checked channel kind; fields are named `url.<kind>` etc. */
+export async function addChannelsAction(_state: FormState, formData: FormData): Promise<FormState> {
   const { actor, organizationId } = await currentAssociation();
-  const values = formValues(formData);
+  const values = formValues(formData, ["kinds"]);
+  const kinds = values.kinds as string[];
+  if (kinds.length === 0) return { error: da.onboardingSteps.channels.needOneChannel, values };
+  const inputs = kinds.map((kind) => ({
+    kind,
+    name: values[`name.${kind}`],
+    url: values[`url.${kind}`],
+    audienceCount: values[`audienceCount.${kind}`],
+    audienceBasis: values[`audienceBasis.${kind}`],
+  }));
+  // Validate row by row so each message lands on the right field.
+  const fieldErrors: Record<string, string> = {};
+  for (const input of inputs) {
+    const result = channelSchema.safeParse(input);
+    if (!result.success) {
+      for (const [field, messages] of Object.entries(result.error.flatten().fieldErrors)) {
+        if (messages?.[0]) fieldErrors[`${field}.${input.kind}`] = messages[0];
+      }
+    }
+  }
+  if (Object.keys(fieldErrors).length > 0) return { error: da.forms.fixErrors, fieldErrors, values };
   try {
-    await addChannel(db, actor, organizationId, values as unknown as ChannelInput);
+    await addChannels(db, actor, organizationId, inputs as unknown as ChannelInput[]);
   } catch (error) {
     return formStateFromError(error, values);
   }
   revalidatePath("/forening", "layout");
   return {};
+}
+
+export async function updateChannelAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const { actor } = await currentAssociation();
+  const values = formValues(formData);
+  try {
+    await updateChannel(db, actor, String(values.id), values as unknown as ChannelInput);
+  } catch (error) {
+    return formStateFromError(error, values);
+  }
+  revalidatePath("/forening", "layout");
+  return { ok: true, message: da.onboardingSteps.channels.saved };
+}
+
+export async function updateLocationAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const { actor } = await currentAssociation();
+  const values = formValues(formData);
+  try {
+    await updateLocation(db, actor, String(values.id), values as unknown as LocationInput);
+  } catch (error) {
+    return formStateFromError(error, values);
+  }
+  revalidatePath("/forening", "layout");
+  return { ok: true, message: da.onboardingSteps.channels.saved };
 }
 
 export async function addLocationAction(_state: FormState, formData: FormData): Promise<FormState> {
@@ -167,9 +215,11 @@ async function offeringsHome(
   return overview.organization.status === "draft" ? "/forening/opsaetning/produkter" : "/forening/produkter";
 }
 
+const offeringArrayFields = ["categoryIds", "channelIds", "locationIds"];
+
 export async function createOfferingAction(_state: FormState, formData: FormData): Promise<FormState> {
   const { actor, organizationId } = await currentAssociation();
-  const values = formValues(formData);
+  const values = formValues(formData, offeringArrayFields);
   try {
     if (values.kind === "custom") {
       await createCustomOffering(db, actor, organizationId, values as unknown as CustomOfferingInput);
@@ -185,7 +235,7 @@ export async function createOfferingAction(_state: FormState, formData: FormData
 
 export async function updateOfferingAction(_state: FormState, formData: FormData): Promise<FormState> {
   const { actor, organizationId } = await currentAssociation();
-  const values = formValues(formData);
+  const values = formValues(formData, offeringArrayFields);
   const offeringId = String(values.id);
   try {
     const offering = await getOffering(db, actor, offeringId);

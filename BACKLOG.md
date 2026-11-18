@@ -4,15 +4,15 @@ Milepælene følger spec afsnit 15. En milestone startes først, når den forrig
 
 ## Milepæle
 
-| #   | Navn                | Indhold                                                                                                                                                            | Gate                                                                                 | Status       |
-| --- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------ |
-| M0  | Fundament           | Repo, miljø, migrationer, login, roller, admin-skal, seed, CI, docs, staging                                                                                       | Kan køres og logges ind som hver rolle                                               | Godkendt     |
-| M1  | Udbud               | Forenings-onboarding i trin med kladde, profil, kanaler, lokationer, standard- og egne produkter, admin-godkendelse, link til onboardinghjælp, brancheudelukkelser | En rigtig forening kan registrere sig og publicere godkendte produkter uden udvikler | Til review   |
-| M2  | Efterspørgsel       | Virksomhedsprofil, kort/liste-søgning, filtre, produktdetaljer, manuel kampagnebygger, kladder                                                                     | Virksomhed kan vælge rigtige tilbud og gemme en prissat kampagnekladde               | Ikke startet |
-| M3  | Anbefaling          | Redigerbar foreslået pakke, budgetvalidering, udelukkelsesregler, manuelle valg                                                                                    | Deterministiske tests viser, at små/nye klubber forbliver mulige                     | Ikke startet |
-| M4  | Kontrahering        | Indsend, invitér, accept/afslag, alternativer, endelig bekræftelse, uforanderlige snapshots, statusmaskine                                                         | Ingen kampagne bliver aktiv uden nødvendige godkendelser                             | Ikke startet |
-| M5  | Levering og økonomi | Opgaver, uploads, review, rapport, manuel faktura-/udbetalingsjournal, audit                                                                                       | En hel kampagne kan køre fra registrering til fakturering med korrekte snapshots     | Ikke startet |
-| M6  | Overdragelse        | Regression/sikkerhed, staging, backup/restore-øvelse, driftsrunbook, endelige docs                                                                                 | En professionel udvikler kan klone, konfigurere, køre, teste og deploye selvstændigt | Ikke startet |
+| #   | Navn                | Indhold                                                                                                                                                            | Gate                                                                                 | Status                     |
+| --- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | -------------------------- |
+| M0  | Fundament           | Repo, miljø, migrationer, login, roller, admin-skal, seed, CI, docs, staging                                                                                       | Kan køres og logges ind som hver rolle                                               | Godkendt                   |
+| M1  | Udbud               | Forenings-onboarding i trin med kladde, profil, kanaler, lokationer, standard- og egne produkter, admin-godkendelse, link til onboardinghjælp, brancheudelukkelser | En rigtig forening kan registrere sig og publicere godkendte produkter uden udvikler | Godkendt (M1.1 til review) |
+| M2  | Efterspørgsel       | Virksomhedsprofil, kort/liste-søgning, filtre, produktdetaljer, manuel kampagnebygger, kladder                                                                     | Virksomhed kan vælge rigtige tilbud og gemme en prissat kampagnekladde               | Ikke startet               |
+| M3  | Anbefaling          | Redigerbar foreslået pakke, budgetvalidering, udelukkelsesregler, manuelle valg                                                                                    | Deterministiske tests viser, at små/nye klubber forbliver mulige                     | Ikke startet               |
+| M4  | Kontrahering        | Indsend, invitér, accept/afslag, alternativer, endelig bekræftelse, uforanderlige snapshots, statusmaskine                                                         | Ingen kampagne bliver aktiv uden nødvendige godkendelser                             | Ikke startet               |
+| M5  | Levering og økonomi | Opgaver, uploads, review, rapport, manuel faktura-/udbetalingsjournal, audit                                                                                       | En hel kampagne kan køre fra registrering til fakturering med korrekte snapshots     | Ikke startet               |
+| M6  | Overdragelse        | Regression/sikkerhed, staging, backup/restore-øvelse, driftsrunbook, endelige docs                                                                                 | En professionel udvikler kan klone, konfigurere, køre, teste og deploye selvstændigt | Ikke startet               |
 
 ## Åbne beslutninger til ejeren
 
@@ -27,6 +27,19 @@ Se `DECISIONS.md` for detaljer. Skal være afklaret senest ved den nævnte miles
 - [ ] Betalingsfrister, annullering, underlevering, refusion – før M5
 - [ ] Handelsbetingelser og privatlivspolitik (juridisk review) – før pilot
 - [ ] E-mailudbyder til staging/produktion (f.eks. Resend, Postmark, Brevo) – før M1-pilot
+- [ ] Brancher: må foreninger selv tilføje brancher, eller kun platformen (med anmodning fra foreningen)? – før M3 (gennemgang #9)
+- [ ] Hovedforening, der opretter på vegne af flere afdelinger – før pilot (gennemgang #10)
+- [ ] Supabase Pro eller daglig "ping", så databasen ikke sættes på pause – før pilot
+
+## Ønsker fra ejerens gennemgang
+
+Fra gennemgangen af M1 (`docs/feedback/m1-gennemgang.md`, numrene henviser dertil). Taget i M1.1: #1–5, #6 (flere kanaler, redigering), #7, #11, #14, #15 og forklaring på #12.
+
+- Virksomheden kan stille spørgsmål til et sted ("Andet sted") før de godkender en kampagne (#5) – M4
+- Integration med Facebook/Instagram m.fl. for målt rækkevidde (#6, #8) – efter MVP; kræver app-godkendelse hos Meta
+- Billeder af steder og produkter, f.eks. bane eller skærm i klubhuset (#13) – M2 sammen med fillagring
+- Samlet kampagneoverblik for admin: aktive, planlagte og afsluttede (#16) – M2 (kladder) og M4 (status)
+- Contract-migration, der sletter de gamle kolonner `category_id`, `channel_id`, `location_id` (ADR-016) – når M1.1 er i produktion
 
 ## Teknisk backlog
 

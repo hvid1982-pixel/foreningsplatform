@@ -11,7 +11,7 @@ import { da } from "@/messages/da";
 import { loadCurrentAssociation } from "@/server/association";
 import { OfferingForm } from "../offering-form";
 
-export const metadata: Metadata = { title: da.offering.newStandardTitle };
+export const metadata: Metadata = { title: da.offering.newTitle };
 
 export default function NewOfferingPage({ searchParams }: PageProps<"/forening/produkter/ny">) {
   return (

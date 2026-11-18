@@ -18,6 +18,8 @@ type Definition<T> = {
   defaultValue: T;
   /** Where the default comes from, shown in admin. */
   source: string;
+  /** How admin shows and explains a number: hours also show days; basis points show percent. */
+  unit?: "hours" | "basis_points";
 };
 
 function define<T>(definition: Definition<T>): Definition<T> {
@@ -26,8 +28,10 @@ function define<T>(definition: Definition<T>): Definition<T> {
 
 export const configDefinitions = {
   "campaigns.association_response_window_hours": define({
-    label: "Svarfrist for foreninger (timer)",
-    description: "Hvor længe en forening har til at svare på en kampagneinvitation.",
+    label: "Svarfrist for foreninger",
+    description:
+      "Hvor længe en forening har til at svare på en kampagneinvitation. Angives i timer, så fristen også kan være f.eks. 36 timer: 72 timer = 3 dage.",
+    unit: "hours",
     schema: z
       .number()
       .int()
@@ -51,8 +55,10 @@ export const configDefinitions = {
     source: "Spec afsnit 9 og 17 (forslag til pilot)",
   }),
   "finance.platform_fee_basis_points": define({
-    label: "Platformgebyr (basispoint, 100 = 1 %)",
-    description: "Åben beslutning. Ingen værdi betyder, at gebyret ikke er fastlagt.",
+    label: "Platformgebyr",
+    description:
+      "Platformens andel af kampagnens pris. Angives i basispoint (hundrededele af en procent), så brøkdele kan skrives uden decimaler: 100 = 1 %, 1250 = 12,5 %. Åben beslutning; tom betyder ikke fastlagt.",
+    unit: "basis_points",
     schema: z.number().int().min(0).max(10_000).nullable(),
     defaultValue: null,
     source: "Spec afsnit 9 (åben beslutning; 15 % var kun illustrativt)",

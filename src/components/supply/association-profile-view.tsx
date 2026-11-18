@@ -95,6 +95,31 @@ export function AssociationProfileView({
           <Row label={tp.activities} value={p?.activities} />
           <Row label={tp.memberCount} value={p?.memberCount != null ? formatNumber(p.memberCount) : null} />
           <Row label={tp.ageBands} value={p?.memberAgeBands.length ? p.memberAgeBands.join(", ") : null} />
+          <Row
+            label={tp.genderMix}
+            value={
+              p?.genderMix
+                ? [
+                    da.genderMix[p.genderMix as keyof typeof da.genderMix],
+                    p.femaleSharePercent != null ? tp.femaleShareSuffix(p.femaleSharePercent) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : p?.femaleSharePercent != null
+                  ? tp.femaleShareSuffix(p.femaleSharePercent)
+                  : null
+            }
+          />
+          <Row
+            label={tp.audienceSegments}
+            value={
+              p?.audienceSegments.length
+                ? p.audienceSegments
+                    .map((code) => da.audienceSegment[code as keyof typeof da.audienceSegment] ?? code)
+                    .join(", ")
+                : null
+            }
+          />
           <Row label={tp.facilities} value={p?.facilities} />
         </dl>
       </Section>

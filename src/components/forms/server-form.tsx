@@ -199,7 +199,8 @@ export function CheckboxGroupField({
   options,
   defaultValues = [],
   className,
-}: Omit<FieldBase, "required"> & {
+  required,
+}: FieldBase & {
   options: readonly { value: string; label: string }[];
   defaultValues?: readonly string[];
 }) {
@@ -210,7 +211,8 @@ export function CheckboxGroupField({
   return (
     <fieldset className={cn("grid gap-2", className)}>
       <legend className="mb-1 text-sm font-medium">
-        {label} <span className="font-normal text-muted-foreground">({da.forms.optional})</span>
+        {label}
+        {!required && <span className="ml-1 font-normal text-muted-foreground">({da.forms.optional})</span>}
       </legend>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       <div className="flex flex-wrap gap-2">
@@ -238,6 +240,7 @@ export function CheckboxGroupField({
 export function RadioGroupField({
   name,
   label,
+  hint,
   options,
   defaultValue,
   required,
@@ -249,6 +252,7 @@ export function RadioGroupField({
         {label}
         {!required && <span className="ml-1 font-normal text-muted-foreground">({da.forms.optional})</span>}
       </legend>
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
           <label

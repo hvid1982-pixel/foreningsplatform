@@ -1,4 +1,6 @@
 import {
+  CheckboxGroupField,
+  RadioGroupField,
   SelectField,
   ServerForm,
   SubmitButton,
@@ -11,6 +13,7 @@ import type {
   AssociationLocation,
   AssociationOffering,
 } from "@/modules/associations/schema";
+import { offeringUnitOptions, seasonOptions } from "@/modules/associations/validation";
 import type { CatalogCategory, ProductTemplate } from "@/modules/catalog/schema";
 import { da } from "@/messages/da";
 import { createOfferingAction, updateOfferingAction } from "../actions";
@@ -41,6 +44,8 @@ export function OfferingForm({
     label: [da.channelKind[c.kind], c.name].filter(Boolean).join(" · "),
   }));
   const locationOptions = locations.map((l) => ({ value: l.id, label: l.name }));
+  const unitOptions = offeringUnitOptions.map((value) => ({ value, label: da.offeringUnit[value] }));
+  const seasonChoices = seasonOptions.map((value) => ({ value, label: da.season[value] }));
   const price = offering?.priceMinor ?? template?.suggestedPriceMinor;
 
   return (
@@ -78,16 +83,32 @@ export function OfferingForm({
         defaultValue={offering?.description ?? template?.description}
       />
       {kind === "custom" && (
-        <div className="grid gap-5 sm:grid-cols-2">
-          <SelectField
-            name="categoryId"
-            label={t.category}
+        <>
+          <CheckboxGroupField
+            name="categoryIds"
+            label={t.categories}
+            hint={t.categoriesHint}
             required
             options={categories.map((c) => ({ value: c.id, label: c.name }))}
-            defaultValue={offering?.categoryId}
+            defaultValues={offering?.categoryIds ?? []}
           />
-          <TextField name="unit" label={t.unit} hint={t.unitHint} required defaultValue={offering?.unit} />
-        </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <SelectField
+              name="unitCode"
+              label={t.unit}
+              hint={t.unitHint}
+              required
+              options={unitOptions}
+              defaultValue={offering?.unitCode}
+            />
+            <TextField
+              name="unit"
+              label={t.unitOther}
+              hint={t.unitOtherHint}
+              defaultValue={offering?.unitCode === "other" ? offering.unit : undefined}
+            />
+          </div>
+        </>
       )}
       <TextField
         name="priceMinor"
@@ -114,16 +135,26 @@ export function OfferingForm({
         className="max-w-xs"
         defaultValue={offering?.capacity}
       />
+      <RadioGroupField
+        name="season"
+        label={t.season}
+        hint={t.seasonHint}
+        required
+        options={seasonChoices}
+        defaultValue={offering?.season ?? "year_round"}
+      />
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField
           name="availableFrom"
           label={t.availableFrom}
+          hint={t.customDatesHint}
           type="date"
           defaultValue={offering?.availableFrom}
         />
         <TextField
           name="availableTo"
           label={t.availableTo}
+          hint={t.customDatesHint}
           type="date"
           defaultValue={offering?.availableTo}
         />
@@ -133,28 +164,30 @@ export function OfferingForm({
         label={t.availabilityNote}
         defaultValue={offering?.availabilityNote}
       />
-      {(channelOptions.length > 0 || locationOptions.length > 0) && (
-        <div className="grid gap-5 sm:grid-cols-2">
-          {channelOptions.length > 0 && (
-            <SelectField
-              name="channelId"
-              label={t.channel}
-              options={channelOptions}
-              placeholder={t.none}
-              defaultValue={offering?.channelId}
-            />
-          )}
-          {locationOptions.length > 0 && (
-            <SelectField
-              name="locationId"
-              label={t.location}
-              options={locationOptions}
-              placeholder={t.none}
-              defaultValue={offering?.locationId}
-            />
-          )}
-        </div>
+      {channelOptions.length > 0 && (
+        <CheckboxGroupField
+          name="channelIds"
+          label={t.channels}
+          hint={t.channelsHint}
+          options={channelOptions}
+          defaultValues={offering?.channelIds ?? []}
+        />
       )}
+      {locationOptions.length > 0 && (
+        <CheckboxGroupField
+          name="locationIds"
+          label={t.locations}
+          hint={t.locationsHint}
+          options={locationOptions}
+          defaultValues={offering?.locationIds ?? []}
+        />
+      )}
+      <TextField
+        name="locationNote"
+        label={t.locationNote}
+        hint={t.locationNoteHint}
+        defaultValue={offering?.locationNote}
+      />
       {kind === "custom" && (
         <TextAreaField
           name="evidenceRequirements"

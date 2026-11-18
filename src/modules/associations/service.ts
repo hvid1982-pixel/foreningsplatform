@@ -10,6 +10,7 @@ import { recordAuditEvent } from "@/modules/audit/service";
 import { catalogCategories, industries, productTemplates } from "@/modules/catalog/schema";
 import { getConfigValue } from "@/modules/config/service";
 import type { Actor } from "@/modules/identity/actor";
+import { da } from "@/messages/da";
 import { assertPlatformAdmin } from "@/modules/identity/policies";
 import { organizations, type Organization } from "@/modules/identity/schema";
 import {
@@ -39,6 +40,7 @@ import {
 import {
   associationIdentitySchema,
   associationProfileSchema,
+  channelBatchSchema,
   channelSchema,
   customOfferingSchema,
   exclusionsSchema,
@@ -53,6 +55,7 @@ import {
   type ExclusionsInput,
   type LocationInput,
   type OfferingReviewInput,
+  type OfferingUnitCode,
   type ReviewDecisionInput,
   type StandardOfferingInput,
 } from "./validation";
@@ -110,9 +113,32 @@ async function reachStep(tx: DbOrTx, profile: Association, step: number): Promis
 // ---------------------------------------------------------------------------
 
 export type OfferingRow = AssociationOffering & {
+  /** Names of the offering's categories, joined for display ("Synlighed, Aktivitet"). */
   categoryName: string;
   templateName: string | null;
 };
+
+/** Adds category names to offerings (categories are stored as an id array). */
+async function withCategoryNames<T extends AssociationOffering>(
+  db: DbOrTx,
+  offerings: T[],
+): Promise<(T & { categoryName: string })[]> {
+  const ids = [...new Set(offerings.flatMap((o) => o.categoryIds))];
+  const categories = ids.length
+    ? await db
+        .select({ id: catalogCategories.id, name: catalogCategories.name })
+        .from(catalogCategories)
+        .where(inArray(catalogCategories.id, ids))
+    : [];
+  const names = new Map(categories.map((c) => [c.id, c.name]));
+  return offerings.map((o) => ({
+    ...o,
+    categoryName: o.categoryIds
+      .map((id) => names.get(id))
+      .filter(Boolean)
+      .join(", "),
+  }));
+}
 
 export type ExclusionRow = IndustryExclusion & { industryName: string };
 
@@ -188,13 +214,8 @@ async function listOfferingRows(
   { includeArchived }: { includeArchived: boolean },
 ): Promise<OfferingRow[]> {
   const rows = await db
-    .select({
-      offering: associationOfferings,
-      categoryName: catalogCategories.name,
-      templateName: productTemplates.name,
-    })
+    .select({ offering: associationOfferings, templateName: productTemplates.name })
     .from(associationOfferings)
-    .innerJoin(catalogCategories, eq(catalogCategories.id, associationOfferings.categoryId))
     .leftJoin(productTemplates, eq(productTemplates.id, associationOfferings.templateId))
     .where(
       and(
@@ -203,11 +224,10 @@ async function listOfferingRows(
       ),
     )
     .orderBy(asc(associationOfferings.createdAt));
-  return rows.map((row) => ({
-    ...row.offering,
-    categoryName: row.categoryName,
-    templateName: row.templateName,
-  }));
+  return withCategoryNames(
+    db,
+    rows.map((row) => ({ ...row.offering, templateName: row.templateName })),
+  );
 }
 
 /** One offering of an association. Members and platform admins only. */
@@ -327,6 +347,39 @@ export async function addChannel(
   });
 }
 
+/** Adds several channels in one go, e.g. Facebook and Instagram together. All or nothing. */
+export async function addChannels(
+  db: Database,
+  actor: Actor,
+  organizationId: string,
+  inputs: ChannelInput[],
+): Promise<AssociationChannel[]> {
+  assertCanAssistAssociation(actor, organizationId);
+  const list = parse(channelBatchSchema, inputs, "channels");
+  return db.transaction(async (tx) => {
+    await loadAssociationOrganization(tx, organizationId);
+    const channels = await tx
+      .insert(associationChannels)
+      .values(list.map((fields) => ({ organizationId, ...fields })))
+      .returning();
+    for (const channel of channels) {
+      await recordAuditEvent(tx, {
+        actor,
+        actorOrganizationId: organizationId,
+        action: "association.channel_added",
+        entityType: "association_channel",
+        entityId: channel.id,
+        metadata: {
+          kind: channel.kind,
+          audienceCount: channel.audienceCount,
+          audienceBasis: channel.audienceBasis,
+        },
+      });
+    }
+    return channels;
+  });
+}
+
 async function loadChannel(tx: DbOrTx, channelId: string): Promise<AssociationChannel> {
   const channel = await tx.query.associationChannels.findFirst({
     where: eq(associationChannels.id, channelId),
@@ -397,6 +450,30 @@ export async function addLocation(
       entityId: location.id,
     });
     return location;
+  });
+}
+
+export async function updateLocation(
+  db: Database,
+  actor: Actor,
+  locationId: string,
+  input: LocationInput,
+): Promise<void> {
+  const fields = parse(locationSchema, input, "location");
+  await db.transaction(async (tx) => {
+    const location = await tx.query.associationLocations.findFirst({
+      where: eq(associationLocations.id, locationId),
+    });
+    if (!location) throw new NotFoundError("location", locationId);
+    assertCanAssistAssociation(actor, location.organizationId);
+    await tx.update(associationLocations).set(fields).where(eq(associationLocations.id, locationId));
+    await recordAuditEvent(tx, {
+      actor,
+      actorOrganizationId: location.organizationId,
+      action: "association.location_updated",
+      entityType: "association_location",
+      entityId: locationId,
+    });
   });
 }
 
@@ -487,24 +564,50 @@ async function initialStatus(
   return statusOnSubmit({ ...input, customRequiresApproval });
 }
 
-async function assertOwnedReference(
+/** Every referenced channel and location must exist and belong to the association. */
+async function assertOwnedReferences(
   tx: DbOrTx,
   organizationId: string,
-  ref: { channelId: string | null; locationId: string | null },
+  ref: { channelIds: string[]; locationIds: string[] },
 ): Promise<void> {
-  if (ref.channelId) {
-    const channel = await loadChannel(tx, ref.channelId);
-    if (channel.organizationId !== organizationId)
+  if (ref.channelIds.length) {
+    const found = await tx
+      .select({ id: associationChannels.id, organizationId: associationChannels.organizationId })
+      .from(associationChannels)
+      .where(inArray(associationChannels.id, ref.channelIds));
+    if (
+      found.length !== new Set(ref.channelIds).size ||
+      found.some((c) => c.organizationId !== organizationId)
+    )
       throw new ForbiddenError("channel belongs to another association");
   }
-  if (ref.locationId) {
-    const location = await tx.query.associationLocations.findFirst({
-      where: eq(associationLocations.id, ref.locationId),
-    });
-    if (!location || location.organizationId !== organizationId) {
+  if (ref.locationIds.length) {
+    const found = await tx
+      .select({ id: associationLocations.id, organizationId: associationLocations.organizationId })
+      .from(associationLocations)
+      .where(inArray(associationLocations.id, ref.locationIds));
+    if (
+      found.length !== new Set(ref.locationIds).size ||
+      found.some((l) => l.organizationId !== organizationId)
+    )
       throw new ForbiddenError("location belongs to another association");
-    }
   }
+}
+
+/** All categories must exist and be active. */
+async function assertActiveCategories(tx: DbOrTx, categoryIds: string[]): Promise<void> {
+  const found = await tx
+    .select({ id: catalogCategories.id, archivedAt: catalogCategories.archivedAt })
+    .from(catalogCategories)
+    .where(inArray(catalogCategories.id, categoryIds));
+  const active = new Set(found.filter((c) => !c.archivedAt).map((c) => c.id));
+  const missing = categoryIds.find((id) => !active.has(id));
+  if (missing) throw new NotFoundError("category", missing);
+}
+
+/** Unit label stored with a custom offering: the standard label, or the association's own text. */
+function unitLabel(fields: { unitCode: OfferingUnitCode; unit: string | null }): string {
+  return fields.unitCode === "other" ? (fields.unit ?? "") : da.offeringUnit[fields.unitCode];
 }
 
 async function loadActiveTemplate(tx: DbOrTx, templateId: string) {
@@ -532,13 +635,13 @@ export async function createStandardOffering(
     templateRange: { minMinor: template.priceMinMinor, maxMinor: template.priceMaxMinor },
   });
   return db.transaction(async (tx) => {
-    await assertOwnedReference(tx, organizationId, fields);
+    await assertOwnedReferences(tx, organizationId, fields);
     const [offering] = await tx
       .insert(associationOfferings)
       .values({
         organizationId,
         kind: "standard",
-        categoryId: template.categoryId,
+        categoryIds: [template.categoryId],
         unit: template.unit,
         evidenceRequirements: template.evidenceRequirements,
         currency: template.currency,
@@ -569,22 +672,20 @@ export async function createCustomOffering(
   assertCanAssistAssociation(actor, organizationId);
   const fields = parse(customOfferingSchema, input, "custom offering");
   const organization = await loadAssociationOrganization(db, organizationId);
-  const category = await db.query.catalogCategories.findFirst({
-    where: eq(catalogCategories.id, fields.categoryId),
-  });
-  if (!category || category.archivedAt) throw new NotFoundError("category", fields.categoryId);
+  await assertActiveCategories(db, fields.categoryIds);
   const status = await initialStatus(db, organization.status, {
     kind: "custom",
     priceMinor: fields.priceMinor,
   });
   return db.transaction(async (tx) => {
-    await assertOwnedReference(tx, organizationId, fields);
+    await assertOwnedReferences(tx, organizationId, fields);
     const [offering] = await tx
       .insert(associationOfferings)
       .values({
         organizationId,
         kind: "custom",
         ...fields,
+        unit: unitLabel(fields),
         status,
         submittedAt: status === "draft" ? null : new Date(),
       })
@@ -634,11 +735,13 @@ export async function updateOffering(
     delete rest.templateId;
     changes = rest;
   } else {
-    changes = parse(customOfferingSchema, input, "custom offering");
+    const fields = parse(customOfferingSchema, input, "custom offering");
+    await assertActiveCategories(db, fields.categoryIds);
+    changes = { ...fields, unit: unitLabel(fields) };
   }
 
   const relevantChange = reviewRelevantOfferingFields.some(
-    (field) => field in changes && changes[field] !== current[field],
+    (field) => field in changes && !sameValue(changes[field], current[field]),
   );
   let status = current.status;
   if (organization.status === "draft") status = "draft";
@@ -651,9 +754,9 @@ export async function updateOffering(
   }
 
   return db.transaction(async (tx) => {
-    await assertOwnedReference(tx, current.organizationId, {
-      channelId: changes.channelId ?? null,
-      locationId: changes.locationId ?? null,
+    await assertOwnedReferences(tx, current.organizationId, {
+      channelIds: changes.channelIds ?? [],
+      locationIds: changes.locationIds ?? [],
     });
     const [updated] = await tx
       .update(associationOfferings)
@@ -678,6 +781,14 @@ export async function updateOffering(
     });
     return updated;
   });
+}
+
+/** Equality for offering fields; arrays compare by content, ignoring order. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && [...a].sort().join() === [...b].sort().join();
+  }
+  return a === b;
 }
 
 /** Withdraws an offering. Archived offerings are kept for history. */
@@ -868,25 +979,25 @@ export async function listReviewQueue(db: Database, actor: Actor): Promise<Revie
   const rows = await db
     .select({
       offering: associationOfferings,
-      categoryName: catalogCategories.name,
       templateName: productTemplates.name,
       organizationName: organizations.name,
     })
     .from(associationOfferings)
     .innerJoin(organizations, eq(organizations.id, associationOfferings.organizationId))
-    .innerJoin(catalogCategories, eq(catalogCategories.id, associationOfferings.categoryId))
     .leftJoin(productTemplates, eq(productTemplates.id, associationOfferings.templateId))
     .where(eq(associationOfferings.status, "pending_review"))
     .orderBy(asc(associationOfferings.submittedAt));
 
   return {
     associations: pendingAssociations,
-    offerings: rows.map((row) => ({
-      ...row.offering,
-      categoryName: row.categoryName,
-      templateName: row.templateName,
-      organizationName: row.organizationName,
-    })),
+    offerings: await withCategoryNames(
+      db,
+      rows.map((row) => ({
+        ...row.offering,
+        templateName: row.templateName,
+        organizationName: row.organizationName,
+      })),
+    ),
   };
 }
 
@@ -908,7 +1019,6 @@ export async function listPublishedOfferings(
   const rows = await db
     .select({
       offering: associationOfferings,
-      categoryName: catalogCategories.name,
       templateName: productTemplates.name,
       organizationName: organizations.name,
       city: associations.city,
@@ -916,7 +1026,6 @@ export async function listPublishedOfferings(
     })
     .from(associationOfferings)
     .innerJoin(organizations, eq(organizations.id, associationOfferings.organizationId))
-    .innerJoin(catalogCategories, eq(catalogCategories.id, associationOfferings.categoryId))
     .leftJoin(productTemplates, eq(productTemplates.id, associationOfferings.templateId))
     .leftJoin(associations, eq(associations.organizationId, organizations.id))
     .where(
@@ -928,12 +1037,14 @@ export async function listPublishedOfferings(
       ),
     )
     .orderBy(asc(organizations.name), desc(associationOfferings.createdAt));
-  return rows.map((row) => ({
-    ...row.offering,
-    categoryName: row.categoryName,
-    templateName: row.templateName,
-    organizationName: row.organizationName,
-    city: row.city,
-    region: row.region,
-  }));
+  return withCategoryNames(
+    db,
+    rows.map((row) => ({
+      ...row.offering,
+      templateName: row.templateName,
+      organizationName: row.organizationName,
+      city: row.city,
+      region: row.region,
+    })),
+  );
 }

@@ -62,20 +62,37 @@ test("en ny forening kan oprette sig, sende til godkendelse og få produkter pub
   await page.getByLabel("Beskrivelse af foreningen").fill("Håndboldklub for børn og voksne.");
   await page.getByLabel("Antal medlemmer").fill("250");
   await page.getByText("13-18 år").click();
+  await page.getByText("Blandet", { exact: true }).click();
+  await page.getByText("Børn og unge", { exact: true }).click();
   await saveAndContinue(page);
 
   // Step 3: channels — "continue" without any is refused
   await expect(page.getByRole("heading", { name: "Kanaler og steder" })).toBeVisible();
   await page.getByRole("button", { name: "Fortsæt" }).click();
   await expect(page.getByText("Tilføj mindst én kanal eller ét sted")).toBeVisible();
+  // Several channels at once
   const channelForm = page
     .locator("form")
-    .filter({ has: page.getByRole("button", { name: "Tilføj kanal" }) });
-  await channelForm.getByLabel("Type").selectOption("instagram");
-  await channelForm.getByLabel("Antal følgere eller modtagere").fill("900");
-  await channelForm.getByRole("button", { name: "Tilføj kanal" }).click();
-  await expect(page.getByText("Instagram").first()).toBeVisible();
+    .filter({ has: page.getByRole("button", { name: "Tilføj valgte kanaler" }) });
+  const row = (kind: string) =>
+    channelForm.getByRole("listitem").filter({ has: page.getByRole("checkbox", { name: kind }) });
+  await row("Instagram").getByRole("checkbox").check();
+  await row("Instagram").getByLabel("Antal følgere eller modtagere").fill("900");
+  await row("Facebook").getByRole("checkbox").check();
+  await row("Facebook").getByLabel("Antal følgere eller modtagere").fill("1500");
+  await channelForm.getByRole("button", { name: "Tilføj valgte kanaler" }).click();
   await expect(page.getByText("900 (eget tal)")).toBeVisible();
+  await expect(page.getByText("1.500 (eget tal)")).toBeVisible();
+
+  // Edit an existing channel
+  const instagramItem = page
+    .getByRole("listitem")
+    .filter({ hasText: "900 (eget tal)" })
+    .filter({ has: page.getByText("Ret", { exact: true }) });
+  await instagramItem.getByText("Ret", { exact: true }).click();
+  await instagramItem.getByLabel("Antal følgere eller modtagere").fill("950");
+  await instagramItem.getByRole("button", { name: "Gem", exact: true }).click();
+  await expect(page.getByText("950 (eget tal)")).toBeVisible();
   await page.getByRole("button", { name: "Fortsæt" }).click();
 
   // Step 4: one standard offering (auto-approved price) and one custom offering
@@ -89,8 +106,13 @@ test("en ny forening kan oprette sig, sende til godkendelse og få produkter pub
   await page.getByRole("link", { name: "Opret eget produkt" }).click();
   await page.getByLabel("Titel").fill("Navnesponsor for julestævnet");
   await page.getByLabel("Beskrivelse", { exact: true }).fill("Stævnet bærer jeres navn.");
-  await page.getByLabel("Kategori").selectOption({ label: "Events" });
-  await page.getByLabel("Enhed", { exact: true }).fill("stævne");
+  await page.getByText("Events", { exact: true }).click();
+  await page.getByText("Medlemsaktivering", { exact: true }).click();
+  await page.getByLabel("Enhed", { exact: true }).selectOption({ label: "Andet" });
+  await page.getByLabel("Egen enhed").fill("stævne");
+  await page.getByText("Sommer (juni–august)").click();
+  await page.getByRole("checkbox", { name: /Instagram/ }).check();
+  await page.getByRole("checkbox", { name: /Facebook/ }).check();
   await page.getByLabel("Pris pr. enhed i kr. (uden moms)").fill("5.000");
   await page.getByLabel("Dokumentation af leverancen").fill("Fotos fra dagen.");
   await page.getByRole("button", { name: "Gem produkt" }).click();

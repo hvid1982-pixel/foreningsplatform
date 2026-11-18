@@ -29,6 +29,13 @@
       "when": 1793798599486,
       "tag": "0003_supply",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795006400037,
+      "tag": "0004_offering_multi_values",
+      "breakpoints": true
     }
   ]
 }
