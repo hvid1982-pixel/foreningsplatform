@@ -7,6 +7,8 @@ import {
   multiplyMoney,
   subtractMoney,
   sumMoney,
+  parseKronerToMinor,
+  formatMinorAsKronerInput,
 } from "./money";
 
 describe("money", () => {
@@ -34,5 +36,29 @@ describe("money", () => {
 
   it("formats DKK the Danish way", () => {
     expect(formatMoney(money(123_450)).replace(/\s/g, " ")).toBe("1.234,50 kr.");
+  });
+});
+
+describe("parseKronerToMinor", () => {
+  it.each([
+    ["1500", 150_000],
+    ["1.500", 150_000],
+    ["1500,5", 150_050],
+    ["1.500,50", 150_050],
+    ["1500 kr.", 150_000],
+    [" 0 ", 0],
+    ["12.345.678,09", 1_234_567_809],
+  ])("parses %s", (input, expected) => {
+    expect(parseKronerToMinor(input)).toBe(expected);
+  });
+
+  it.each(["", "-5", "1,234", "1.50", "abc", "1500,505", "1,5,0"])("rejects %s", (input) => {
+    expect(parseKronerToMinor(input)).toBeNull();
+  });
+
+  it("round-trips through the input formatter", () => {
+    for (const minor of [0, 5, 150_000, 150_050, 99]) {
+      expect(parseKronerToMinor(formatMinorAsKronerInput(minor))).toBe(minor);
+    }
   });
 });

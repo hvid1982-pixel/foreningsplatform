@@ -59,3 +59,29 @@ const formatters: Record<Currency, Intl.NumberFormat> = {
 export function formatMoney(a: Money): string {
   return formatters[a.currency].format(a.amountMinor / 100);
 }
+
+/**
+ * Parses a Danish kroner amount typed by a user into integer øre, using string
+ * arithmetic only (no floats). Accepts "1500", "1.500", "1500,5", "1.500,50",
+ * "1500 kr.". Returns null for anything else, including negative amounts and
+ * more than two decimals.
+ */
+export function parseKronerToMinor(input: string): number | null {
+  const cleaned = input
+    .trim()
+    .replace(/\s*kr\.?$/i, "")
+    .replace(/\s/g, "");
+  const match = /^(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{1,2}))?$/.exec(cleaned);
+  if (!match) return null;
+  const kroner = Number(match[1].replace(/\./g, ""));
+  const ore = Number((match[2] ?? "").padEnd(2, "0"));
+  const total = kroner * 100 + ore;
+  return Number.isSafeInteger(total) ? total : null;
+}
+
+/** "1500,50" (for pre-filling an input field). */
+export function formatMinorAsKronerInput(amountMinor: number): string {
+  const kroner = Math.trunc(amountMinor / 100);
+  const ore = Math.abs(amountMinor % 100);
+  return ore === 0 ? String(kroner) : `${kroner},${String(ore).padStart(2, "0")}`;
+}

@@ -4,6 +4,17 @@ Formatet følger [Keep a Changelog](https://keepachangelog.com/da/1.1.0/). Versi
 
 ## [Unreleased]
 
+### Tilføjet – Milestone 1: Udbud
+
+- Foreningers onboarding i seks trin med kladde: stamdata, profil, kanaler og steder, produkter, udelukkede brancher, forhåndsvisning og indsendelse. Profilen kan rettes bagefter.
+- Standardkatalog med ni standardprodukter (minimumsleverance, dokumentationskrav, vejledende prisramme) og 17 brancher. Priserne er forslag og ikke endelige.
+- Foreningers egne produkter med prisforslag, kapacitet, periode og dokumentationskrav.
+- Admin: godkendelseskø, gennemgang af forening med godkend/send tilbage, godkendelse eller afvisning af produkter med mulighed for at rette prisen, skift af organisationsstatus, redigering og arkivering af standardprodukter, redigering af forretningsregler.
+- Knap til at booke onboardinghjælp, som vises, når admin har indtastet et link.
+- Migration `0003_supply` med tabellerne `associations`, `association_channels`, `association_locations`, `industry_exclusions`, `association_offerings`, `product_templates` og `industries` (alle med RLS).
+- DEMO-foreningen har nu en fuld profil, kanaler, et sted og tre produkter.
+- Tests: forretningsregler for udbud (unit), onboarding, godkendelse, publicering og adgangskontrol (integration), hele forløbet fra ny forening til publicerede produkter samt bookinglink (E2E).
+
 ### Tilføjet
 
 - `vercel.json` med build-kommando og region (Dublin, samme som databasen), så Vercel kun kræver miljøvariabler.

@@ -29,18 +29,18 @@ PostgreSQL         Tabeller, constraints, migrationer (drizzle/), audit-trigger.
 
 ## Moduler
 
-| Modul          | Ansvar                                                                                      | Status |
-| -------------- | ------------------------------------------------------------------------------------------- | ------ |
-| `identity`     | Brugere, organisationer (forening/virksomhed/platform), medlemskaber, roller, adgangsregler | M0     |
-| `audit`        | Append-only log over væsentlige handlinger                                                  | M0     |
-| `config`       | Versionerede forretningsregler med standardværdier                                          | M0     |
-| `catalog`      | Kategorier (M0), produktskabeloner og foreningers tilbud (M1)                               | M0/M1  |
-| `associations` | Foreningsprofil, kanaler, lokationer, brancheudelukkelser                                   | M1     |
-| `discovery`    | Søgning, filtre, kort/liste                                                                 | M2     |
-| `campaigns`    | Kampagnebygger, invitationer, godkendelser, snapshots, statusmaskine                        | M2–M4  |
-| `matching`     | Anbefalinger med konfigurerbare, deterministiske regler                                     | M3     |
-| `fulfillment`  | Leveringsopgaver, dokumentation, review                                                     | M5     |
-| `finance`      | Fakturaregistrering, tilgodehavender, udbetalinger, justeringer                             | M5     |
+| Modul          | Ansvar                                                                                        | Status |
+| -------------- | --------------------------------------------------------------------------------------------- | ------ |
+| `identity`     | Brugere, organisationer (forening/virksomhed/platform), medlemskaber, roller, adgangsregler   | M0     |
+| `audit`        | Append-only log over væsentlige handlinger                                                    | M0     |
+| `config`       | Versionerede forretningsregler med standardværdier                                            | M0     |
+| `catalog`      | Kategorier (M0), standardprodukter og brancher (M1)                                           | M0/M1  |
+| `associations` | Foreningsprofil, kanaler, lokationer, brancheudelukkelser, foreningers produkter, godkendelse | M1     |
+| `discovery`    | Søgning, filtre, kort/liste                                                                   | M2     |
+| `campaigns`    | Kampagnebygger, invitationer, godkendelser, snapshots, statusmaskine                          | M2–M4  |
+| `matching`     | Anbefalinger med konfigurerbare, deterministiske regler                                       | M3     |
+| `fulfillment`  | Leveringsopgaver, dokumentation, review                                                       | M5     |
+| `finance`      | Fakturaregistrering, tilgodehavender, udbetalinger, justeringer                               | M5     |
 
 Nye moduler oprettes først, når en milestone har brug for dem. Modulers tabeller registreres i `src/db/schema.ts`.
 
@@ -60,6 +60,18 @@ Nye moduler oprettes først, når en milestone har brug for dem. Modulers tabell
 - Statisk indhold (layout, overskrifter, landingsside) prerenderes.
 - Alt, der læser sessionen, ligger i en komponent bag `<Suspense>` og streames ved forespørgsel. Mønstret ses i alle sider under `src/app/forening`, `virksomhed` og `admin`.
 - `src/app/admin/layout.tsx` har `export const instant = false`. I udviklingstilstand kan Next.js stadig logge "Could not validate `instant`" ved en omdirigering af ikke-admins; det er forventet.
+
+## Formularer
+
+Alle formularer er server actions (`src/app/**/actions.ts`) med `<ServerForm>` og feltkomponenterne i `src/components/forms/server-form.tsx`. En action læser `FormData` med `formValues()`, kalder en service og returnerer en `FormState` (`src/server/form-state.ts`), som viser fejl ved de rigtige felter og bevarer det indtastede. Se ADR-014.
+
+## Udbudssiden (Milestone 1)
+
+- **Onboarding** i seks trin under `/forening/opsaetning/*` (`stamdata`, `profil`, `kanaler`, `produkter`, `brancher`, `indsend`). Hvert trin gemmes for sig; `associations.onboarding_step` husker, hvor foreningen er nået til. Samme sider bruges til at rette profilen bagefter.
+- **Status:** forening `draft` → `pending_review` (indsendt) → `active` (godkendt) eller tilbage til `draft` med en bemærkning. Produkt `draft` → `pending_review` → `approved`/`rejected`; `archived` når det fjernes.
+- **Regler** (`associations/policies.ts`): standardprodukter inden for prisrammen godkendes automatisk; egne produkter kræver godkendelse, så længe reglen `catalog.custom_offering_requires_approval` er slået til; ændring af pris eller indhold på et godkendt produkt sender det til ny vurdering.
+- **Publiceret** betyder: produktet er `approved` og foreningen `active` (`listPublishedOfferings`). Det er grundlaget for virksomhedernes søgning i M2.
+- **Admin:** `/admin/godkendelser` (kø), `/admin/organisationer/[id]` (gennemgang, godkendelse, prisrettelse, status), `/admin/katalog` (standardprodukter), `/admin/regler` (forretningsregler, versioneret).
 
 ## Fejl, logging og overvågning
 

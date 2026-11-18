@@ -6,8 +6,8 @@ Milepælene følger spec afsnit 15. En milestone startes først, når den forrig
 
 | #   | Navn                | Indhold                                                                                                                                                            | Gate                                                                                 | Status       |
 | --- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------ |
-| M0  | Fundament           | Repo, miljø, migrationer, login, roller, admin-skal, seed, CI, docs, staging                                                                                       | Kan køres og logges ind som hver rolle                                               | Til review   |
-| M1  | Udbud               | Forenings-onboarding i trin med kladde, profil, kanaler, lokationer, standard- og egne produkter, admin-godkendelse, link til onboardinghjælp, brancheudelukkelser | En rigtig forening kan registrere sig og publicere godkendte produkter uden udvikler | Ikke startet |
+| M0  | Fundament           | Repo, miljø, migrationer, login, roller, admin-skal, seed, CI, docs, staging                                                                                       | Kan køres og logges ind som hver rolle                                               | Godkendt     |
+| M1  | Udbud               | Forenings-onboarding i trin med kladde, profil, kanaler, lokationer, standard- og egne produkter, admin-godkendelse, link til onboardinghjælp, brancheudelukkelser | En rigtig forening kan registrere sig og publicere godkendte produkter uden udvikler | Til review   |
 | M2  | Efterspørgsel       | Virksomhedsprofil, kort/liste-søgning, filtre, produktdetaljer, manuel kampagnebygger, kladder                                                                     | Virksomhed kan vælge rigtige tilbud og gemme en prissat kampagnekladde               | Ikke startet |
 | M3  | Anbefaling          | Redigerbar foreslået pakke, budgetvalidering, udelukkelsesregler, manuelle valg                                                                                    | Deterministiske tests viser, at små/nye klubber forbliver mulige                     | Ikke startet |
 | M4  | Kontrahering        | Indsend, invitér, accept/afslag, alternativer, endelig bekræftelse, uforanderlige snapshots, statusmaskine                                                         | Ingen kampagne bliver aktiv uden nødvendige godkendelser                             | Ikke startet |
@@ -19,9 +19,9 @@ Milepælene følger spec afsnit 15. En milestone startes først, når den forrig
 Se `DECISIONS.md` for detaljer. Skal være afklaret senest ved den nævnte milestone.
 
 - [ ] Kortudbyder (tiles) – før M2
-- [ ] Bookingside til onboardinghjælp (URL) – før M1-demo
-- [ ] Minimumskatalog og dokumentationskrav pr. produkt – før M1
-- [ ] Prissætning af egne produkter – før M1
+- [ ] Bookingside til onboardinghjælp (URL) – kan indtastes af admin under Forretningsregler, når den findes
+- [ ] Bekræft standardkatalog, prisrammer og dokumentationskrav (forslag i D-012) – før pilot
+- [ ] Bekræft prissætning af egne produkter (forslag i D-014) – før pilot
 - [ ] Om foreninger skal godkende hver kampagne – før M4
 - [ ] Platformgebyr, betaler, moms, kontraktform – før M4
 - [ ] Betalingsfrister, annullering, underlevering, refusion – før M5
@@ -31,8 +31,11 @@ Se `DECISIONS.md` for detaljer. Skal være afklaret senest ved den nævnte miles
 ## Teknisk backlog
 
 - Fejlmonitorering (Sentry eller tilsvarende) – M1 eller M6
-- Brugerflade til at ændre forretningsregler (findes i service-laget; UI mangler) – M1
-- Admin-UI til at ændre organisationsstatus (service findes) – M1
+- Brugerflade, hvor admin redigerer en forenings profil på dens vegne (services tillader det, ADR-015) – efter behov
+- Geokodning af adresser til koordinater (felter findes) – M2
+- Billeder og medier på produkter – M2 eller senere
+- E-mail til foreningen ved godkendelse eller tilbagesendelse – M1-pilot sammen med mailudbyder
+- Redigering af kategorier og brancher i admin (data findes; i dag via seed) – efter behov
 - Flere teammedlemmer pr. organisation og invitationer – efter MVP
 - Mulighed for at én bruger repræsenterer flere foreninger – efter MVP
 - Row-level security som ekstra sikkerhedslag – overvejes i M6

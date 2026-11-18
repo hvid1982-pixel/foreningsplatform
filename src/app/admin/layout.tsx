@@ -6,7 +6,9 @@ import { requirePlatformAdmin } from "@/server/session";
 
 const links = [
   { href: "/admin", label: da.nav.dashboard },
+  { href: "/admin/godkendelser", label: da.nav.reviews },
   { href: "/admin/organisationer", label: da.nav.organizations },
+  { href: "/admin/katalog", label: da.nav.catalog },
   { href: "/admin/regler", label: da.nav.configuration },
   { href: "/admin/log", label: da.nav.auditLog },
 ];

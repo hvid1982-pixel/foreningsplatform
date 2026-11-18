@@ -68,21 +68,45 @@ Supabase kan eksponere `public`-skemaet via et automatisk REST-API. RLS uden pol
 
 På Vercel (Fluid compute) sættes instanser på pause mellem requests. Med postgres.js blev forbindelser stående halvdøde, og da driveren ikke har en forespørgsels-timeout, hang sider, til Vercel stoppede dem efter 300 sekunder. Appen bruger nu `pg` (node-postgres) med en lille pool, `idleTimeoutMillis` 5 s, forbindelses-timeout 10 s og forespørgsels-timeout 15 s (på klientsiden; `statement_timeout` sendes som startparameter, som poolere kan afvise), og registrerer poolen med `attachDatabasePool` fra `@vercel/functions`, så Vercel lukker ledige forbindelser, før en instans pauses. node-postgres bruger ikke navngivne prepared statements, så Supabases Transaction pooler virker uændret.
 
+### ADR-013 · Udbudssiden ligger i modulet `associations`
+
+2026-11-04 · Besluttet
+
+Foreningsprofil, kanaler, lokationer, brancheudelukkelser og foreningers produkter (`association_offerings`) ligger i `src/modules/associations`. Kataloget (`catalog`) ejer kategorier, standardprodukter og brancher. Retningen er envejs: `associations` bruger `catalog`, aldrig omvendt. Tilgængelighed er felter på produktet (periode, kapacitet, bemærkning); separate tabeller til tilgængelighed og medier (planlagt i DATA_MODEL) venter, til de får en konkret brug.
+
+### ADR-014 · Formularer: server actions og én fælles formularkomponent
+
+2026-11-04 · Besluttet
+
+Alle formularer bruger server actions og `<ServerForm>` (`src/components/forms/server-form.tsx`). Actions er tynde: de læser `FormData`, kalder en service og oversætter `DomainError` til danske beskeder via `src/server/form-state.ts`. Valideringen ligger i modulernes Zod-skemaer, som accepterer både formulartekst og typede værdier, så de samme services kan kaldes fra tests og scripts. Beløb tastes i kroner og omregnes til øre uden kommatal (`parseKronerToMinor`).
+
+### ADR-015 · Platformadmins kan hjælpe foreninger gennem de samme services
+
+2026-11-04 · Besluttet
+
+Spec afsnit 3 tillader, at en admin hjælper en forening over et opkald uden at kende adgangskoden. Foreningens services tillader derfor også platformadmins (`canAssistAssociation`), og hver ændring auditeres med adminen som aktør. Der findes ingen "log ind som"-funktion. En brugerflade, hvor admin redigerer på foreningens vegne, kommer, når der er behov (BACKLOG).
+
 ## Produkt- og forretningsstandardvalg
 
-| ID    | Emne                                                       | Valg                                                           | Status       | Hvor                                                  |
-| ----- | ---------------------------------------------------------- | -------------------------------------------------------------- | ------------ | ----------------------------------------------------- |
-| D-001 | Svarfrist for foreninger                                   | 72 timer                                                       | Standardvalg | `config: campaigns.association_response_window_hours` |
-| D-002 | Egne produkter kræver admin-godkendelse                    | Ja                                                             | Standardvalg | `config: catalog.custom_offering_requires_approval`   |
-| D-003 | Udbetaling til forening først efter virksomhedens betaling | Ja                                                             | Standardvalg | `config: finance.payout_requires_company_payment`     |
-| D-004 | Platformgebyr                                              | Ikke fastlagt (15 % var illustrativt)                          | Åben         | `config: finance.platform_fee_basis_points`           |
-| D-005 | Login                                                      | E-mail og adgangskode (mindst 10 tegn) med e-mailbekræftelse   | Standardvalg | `src/lib/auth.ts`                                     |
-| D-006 | Organisationer pr. bruger                                  | Én forening eller virksomhed pr. bruger i MVP                  | Standardvalg | `canCreateOrganization`                               |
-| D-007 | Startstatus                                                | Foreninger starter som kladde, virksomheder som aktive         | Standardvalg | `createOrganization`                                  |
-| D-008 | Valuta og beløb                                            | Kun DKK; heltal i øre; afrunding halvt væk fra nul ved gebyrer | Standardvalg | `src/lib/money.ts`                                    |
-| D-009 | Platformadmins                                             | Oprettes kun via kommandolinje, aldrig via UI                  | Standardvalg | `scripts/create-platform-admin.ts`                    |
-| D-010 | Demodata                                                   | Markeres `is_demo` og "DEMO"; seed afvises i produktion        | Besluttet    | `scripts/seed.ts`                                     |
-| D-011 | Arbejdsnavn                                                | "Foreningsplatform"                                            | Standardvalg | `src/messages/da.ts`                                  |
+| ID    | Emne                                                       | Valg                                                                  | Status        | Hvor                                                   |
+| ----- | ---------------------------------------------------------- | --------------------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| D-001 | Svarfrist for foreninger                                   | 72 timer                                                              | Standardvalg  | `config: campaigns.association_response_window_hours`  |
+| D-002 | Egne produkter kræver admin-godkendelse                    | Ja                                                                    | Standardvalg  | `config: catalog.custom_offering_requires_approval`    |
+| D-003 | Udbetaling til forening først efter virksomhedens betaling | Ja                                                                    | Standardvalg  | `config: finance.payout_requires_company_payment`      |
+| D-004 | Platformgebyr                                              | Ikke fastlagt (15 % var illustrativt)                                 | Åben          | `config: finance.platform_fee_basis_points`            |
+| D-005 | Login                                                      | E-mail og adgangskode (mindst 10 tegn) med e-mailbekræftelse          | Standardvalg  | `src/lib/auth.ts`                                      |
+| D-006 | Organisationer pr. bruger                                  | Én forening eller virksomhed pr. bruger i MVP                         | Standardvalg  | `canCreateOrganization`                                |
+| D-007 | Startstatus                                                | Foreninger starter som kladde, virksomheder som aktive                | Standardvalg  | `createOrganization`                                   |
+| D-008 | Valuta og beløb                                            | Kun DKK; heltal i øre; afrunding halvt væk fra nul ved gebyrer        | Standardvalg  | `src/lib/money.ts`                                     |
+| D-009 | Platformadmins                                             | Oprettes kun via kommandolinje, aldrig via UI                         | Standardvalg  | `scripts/create-platform-admin.ts`                     |
+| D-010 | Demodata                                                   | Markeres `is_demo` og "DEMO"; seed afvises i produktion               | Besluttet     | `scripts/seed.ts`                                      |
+| D-011 | Arbejdsnavn                                                | "Foreningsplatform"                                                   | Standardvalg  | `src/messages/da.ts`                                   |
+| D-012 | Standardkatalog til pilot                                  | 9 standardprodukter i 5 kategorier med vejledende prisramme           | Standardvalg  | `catalog/seed-data.ts`, `/admin/katalog`               |
+| D-013 | Godkendelse af standardprodukter                           | Godkendes automatisk, når prisen er inden for prisrammen              | Standardvalg  | `statusOnSubmit` i `associations/policies.ts`          |
+| D-014 | Pris på egne produkter                                     | Foreningen foreslår; admin godkender og kan rette prisen              | Standardvalg  | `reviewOffering` (rettelse logges som `priceOverride`) |
+| D-015 | Ændring af godkendt produkt                                | Ny pris, titel, beskrivelse, enhed eller kategori kræver ny vurdering | Standardvalg  | `updateOffering`                                       |
+| D-016 | Link til onboardinghjælp                                   | Ikke sat; knappen er skjult, indtil admin indtaster et link           | Afventer ejer | `config: onboarding.booking_url`                       |
+| D-017 | Momsbehandling                                             | Priser er uden moms; foreningen angiver, om den er momsregistreret    | Standardvalg  | `associations.vat_registered`                          |
 
 ## Åbne forretningsbeslutninger
 

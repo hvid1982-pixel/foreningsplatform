@@ -43,16 +43,36 @@ Kilden til sandheden er Drizzle-skemaerne i `src/modules/*/schema.ts` og SQL-mig
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `catalog_categories` | Kategorier som data (ikke enum): `slug` unik og stabil, `name`, `description`, `sort_order`, `archived_at`. Seedes med de seks kategorier fra specifikationen. |
 
+## Tabeller i Milestone 1 (Udbud)
+
+### Katalog (udvidet, `src/modules/catalog/schema.ts`)
+
+| Tabel               | Formål                                                                                                                                                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product_templates` | Standardprodukter, som admin vedligeholder: `slug` unik, `category_id` → catalog_categories (restrict), `name`, `description`, `unit`, `minimum_deliverables`, `evidence_requirements`, prisinterval `price_min_minor` ≤ `suggested_price_minor` ≤ `price_max_minor` (check), `currency`, `archived_at` |
+| `industries`        | Brancher som data (bruges til foreningers udelukkelser og senere virksomheder): `slug` unik, `name`, `sort_order`, `archived_at`                                                                                                                                                                        |
+
+### Foreninger (`src/modules/associations/schema.ts`)
+
+| Tabel                   | Formål                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `associations`          | Profil pr. forenings-organisation (PK = `organization_id`): CVR, foreningstype, adresse, kommune, `region` (enum), kontaktperson, beskrivelse, aktiviteter, medlemstal, aldersgrupper (`text[]`), faciliteter, momsregistrering (nullable = ukendt), `onboarding_step`, `submitted_at`, `reviewed_at`, `review_note`                                                 |
+| `association_channels`  | Kommunikationskanaler: `kind` (enum), navn, URL, `audience_count` og `audience_basis` (`stated`/`measured`), `archived_at`                                                                                                                                                                                                                                           |
+| `association_locations` | Fysiske steder: `kind` (enum), navn, adresse, postnummer, by, beskrivelse, koordinater (udfyldes ved geokodning i M2), `archived_at`                                                                                                                                                                                                                                 |
+| `industry_exclusions`   | Brancher foreningen ikke vil samarbejde med: (`organization_id`, `industry_id`) unik, valgfri `expires_on`                                                                                                                                                                                                                                                           |
+| `association_offerings` | Produkter: `kind` (`standard`/`custom`), `template_id` (krævet for standard, check), `category_id`, titel, beskrivelse, enhed, `price_minor` ≥ 0, `capacity` > 0, periode `available_from` ≤ `available_to` (check), dokumentationskrav, valgfri `channel_id`/`location_id`, `status` (`draft`/`pending_review`/`approved`/`rejected`/`archived`), gennemgangsfelter |
+
+Et produkt er _publiceret_, når det er `approved` og foreningen er `active`. Statusovergangene er beskrevet i `ARCHITECTURE.md` og ADR-013. Alle nye tabeller har RLS slået til (`drizzle/0003_supply.sql`). `offering_availability` og `offering_media` fra den oprindelige plan er udskudt: tilgængelighed er foreløbig en periode plus en fritekst på produktet, og medier står i `BACKLOG.md`.
+
 ## Planlagt udvidelse (fra spec afsnit 13)
 
 Tabellerne tilføjes i den milestone, der bruger dem. Navne kan blive justeret, og ændringer noteres i `DECISIONS.md`.
 
-| Milestone              | Tabeller                                                                                                                                                                                                                                                                                                                          |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1 Udbud               | `associations` (profil pr. forenings-organisation), `association_locations` (adresse, kommune, region, koordinater), `association_channels` (kanal, målgruppestørrelse vs. målt rækkevidde), `industry_exclusions` (med evt. udløbsdato), `product_templates`, `association_offerings`, `offering_availability`, `offering_media` |
-| M2 Efterspørgsel       | `companies` (profil pr. virksomheds-organisation), `campaigns`, `campaign_briefs`, `campaign_items`                                                                                                                                                                                                                               |
-| M3 Anbefaling          | Ingen nye tabeller forventet; vægte i `configuration_versions`                                                                                                                                                                                                                                                                    |
-| M4 Kontrahering        | `campaign_invitations`, `campaign_approvals`, `campaign_terms_versions`, `campaign_confirmation_snapshots` (uforanderlige)                                                                                                                                                                                                        |
-| M5 Levering og økonomi | `delivery_tasks`, `delivery_evidence`, `delivery_reviews`, `invoice_records`, `payables`, `payout_records`, `financial_adjustments`                                                                                                                                                                                               |
+| Milestone              | Tabeller                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| M2 Efterspørgsel       | `companies` (profil pr. virksomheds-organisation), `campaigns`, `campaign_briefs`, `campaign_items`                                 |
+| M3 Anbefaling          | Ingen nye tabeller forventet; vægte i `configuration_versions`                                                                      |
+| M4 Kontrahering        | `campaign_invitations`, `campaign_approvals`, `campaign_terms_versions`, `campaign_confirmation_snapshots` (uforanderlige)          |
+| M5 Levering og økonomi | `delivery_tasks`, `delivery_evidence`, `delivery_reviews`, `invoice_records`, `payables`, `payout_records`, `financial_adjustments` |
 
-`users`, `organizations`, `organization_memberships`, `audit_events` og `configuration_versions` fra spec afsnit 13 findes allerede.
+`users`, `organizations`, `organization_memberships`, `audit_events`, `configuration_versions` og M1-tabellerne fra spec afsnit 13 findes allerede.
