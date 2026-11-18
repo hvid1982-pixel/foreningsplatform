@@ -3,12 +3,17 @@ import { Suspense } from "react";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
 import {
   CheckboxGroupField,
+  RadioGroupField,
   ServerForm,
   SubmitButton,
   TextAreaField,
   TextField,
 } from "@/components/forms/server-form";
-import { memberAgeBandOptions } from "@/modules/associations/validation";
+import {
+  audienceSegmentOptions,
+  genderMixOptions,
+  memberAgeBandOptions,
+} from "@/modules/associations/validation";
 import { da } from "@/messages/da";
 import { loadCurrentAssociation } from "@/server/association";
 import { saveProfileAction } from "../../actions";
@@ -18,6 +23,11 @@ export const metadata: Metadata = { title: da.onboardingSteps.steps.profil.title
 
 const t = da.onboardingSteps.profile;
 const ageOptions = memberAgeBandOptions.map((value) => ({ value, label: `${value} år` }));
+const genderOptions = [
+  ...genderMixOptions.map((value) => ({ value, label: da.genderMix[value] })),
+  { value: "", label: t.genderMixUnknown },
+];
+const segmentOptions = audienceSegmentOptions.map((value) => ({ value, label: da.audienceSegment[value] }));
 
 export default function ProfileStepPage() {
   return (
@@ -56,6 +66,28 @@ async function ProfileStep() {
           hint={t.ageBandsHint}
           options={ageOptions}
           defaultValues={p?.memberAgeBands ?? []}
+        />
+        <RadioGroupField
+          name="genderMix"
+          label={t.genderMix}
+          hint={t.genderMixHint}
+          options={genderOptions}
+          defaultValue={p?.genderMix ?? ""}
+        />
+        <TextField
+          name="femaleSharePercent"
+          label={t.femaleShare}
+          hint={t.femaleShareHint}
+          inputMode="numeric"
+          className="max-w-xs"
+          defaultValue={p?.femaleSharePercent}
+        />
+        <CheckboxGroupField
+          name="audienceSegments"
+          label={t.audienceSegments}
+          hint={t.audienceSegmentsHint}
+          options={segmentOptions}
+          defaultValues={p?.audienceSegments ?? []}
         />
         <TextAreaField
           name="facilities"

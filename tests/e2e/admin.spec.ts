@@ -9,7 +9,8 @@ test("admin ser organisationer, forretningsregler og auditlog", async ({ page })
   await expect(page.getByRole("cell", { name: /DEMO Bageriet på Hjørnet/ })).toBeVisible();
 
   await page.getByRole("link", { name: "Forretningsregler" }).click();
-  await expect(page.getByText("Svarfrist for foreninger (timer)")).toBeVisible();
+  await expect(page.getByText("Svarfrist for foreninger", { exact: true })).toBeVisible();
+  await expect(page.getByText("72 timer (3 dage)")).toBeVisible();
   await expect(page.getByText("Ikke endeligt godkendt").first()).toBeVisible();
 
   await page.getByRole("link", { name: "Auditlog" }).click();

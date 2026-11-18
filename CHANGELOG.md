@@ -4,6 +4,18 @@ Formatet følger [Keep a Changelog](https://keepachangelog.com/da/1.1.0/). Versi
 
 ## [Unreleased]
 
+### Ændret – M1.1: Rettelser fra ejerens gennemgang
+
+- Egne produkter kan have flere kategorier, og alle produkter kan bruge flere kanaler og steder. Et "Andet sted" kan beskrives med fritekst.
+- Enhed vælges fra en fast liste (opslag, uge, måned, sæson, år, arrangement, kamp, stk.) med "Andet" og fritekst som reserve.
+- Periode vælges som sæson (hele året, forår, sommer, efterår, vinter) eller egne datoer.
+- Flere kanaler kan tilføjes på én gang, og eksisterende kanaler og steder kan rettes.
+- Foreningsprofilen har kønsfordeling, andel kvinder og målgrupper ud over aldersgrupper.
+- Forretningsregler viser svarfristen i både timer og dage og platformgebyret i procent, med forklaring af basispoint.
+- Sidetitlen for nyt produkt hed altid "Nyt standardprodukt".
+- Virksomhedens side forklarer, at den kommer i Milestone 2.
+- Migration `0004_offering_multi_values` (expand; de gamle kolonner fjernes senere, ADR-016).
+
 ### Tilføjet – Milestone 1: Udbud
 
 - Foreningers onboarding i seks trin med kladde: stamdata, profil, kanaler og steder, produkter, udelukkede brancher, forhåndsvisning og indsendelse. Profilen kan rettes bagefter.

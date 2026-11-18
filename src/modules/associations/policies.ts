@@ -95,7 +95,7 @@ export const reviewRelevantOfferingFields = [
   "description",
   "unit",
   "priceMinor",
-  "categoryId",
+  "categoryIds",
 ] as const;
 
 export function canReviewOffering(status: OfferingStatus): boolean {

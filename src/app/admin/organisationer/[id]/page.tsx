@@ -175,6 +175,21 @@ function OfferingReviewCard({ offering }: { offering: OfferingRow }) {
               {formatMoney(money(offering.priceMinor))} {da.offering.perUnit(offering.unit)}
             </dd>
           </div>
+          <div>
+            <dt className="inline text-muted-foreground">{da.offering.season}: </dt>
+            <dd className="inline">
+              {offering.season === "custom"
+                ? [offering.availableFrom, offering.availableTo].filter(Boolean).join(" – ") ||
+                  da.season.custom
+                : da.season[offering.season as keyof typeof da.season]}
+            </dd>
+          </div>
+          {offering.locationNote && (
+            <div>
+              <dt className="inline text-muted-foreground">{da.offering.locationNote}: </dt>
+              <dd className="inline">{offering.locationNote}</dd>
+            </div>
+          )}
           {offering.capacity !== null && (
             <div>
               <dt className="inline text-muted-foreground">{da.offering.capacity}: </dt>

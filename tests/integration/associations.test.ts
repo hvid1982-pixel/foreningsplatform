@@ -5,6 +5,8 @@ import { auditEvents } from "@/modules/audit/schema";
 import { associationOfferings } from "@/modules/associations/schema";
 import {
   addChannel,
+  addChannels,
+  addLocation,
   createCustomOffering,
   createStandardOffering,
   getAssociationOverview,
@@ -16,6 +18,8 @@ import {
   saveAssociationProfile,
   saveIndustryExclusions,
   submitAssociationForReview,
+  updateChannel,
+  updateLocation,
   updateOffering,
 } from "@/modules/associations/service";
 import {
@@ -49,6 +53,9 @@ const profile = {
   activities: null,
   memberCount: 250,
   memberAgeBands: ["13-18" as const],
+  genderMix: "mixed" as const,
+  femaleSharePercent: 45,
+  audienceSegments: ["children_youth" as const, "parents_families" as const],
   facilities: null,
 };
 
@@ -82,8 +89,10 @@ function offeringInput(overrides: Record<string, unknown> = {}) {
     availableFrom: null,
     availableTo: null,
     availabilityNote: null,
-    channelId: null,
-    locationId: null,
+    season: "year_round" as const,
+    channelIds: [] as string[],
+    locationIds: [] as string[],
+    locationNote: null,
     ...overrides,
   };
 }
@@ -105,7 +114,8 @@ describe("association onboarding and publication", () => {
       ...offeringInput({ priceMinor: social.suggestedPriceMinor }),
     });
     const custom = await createCustomOffering(db, actor, organizationId, {
-      categoryId: category.id,
+      categoryIds: [category.id],
+      unitCode: "other" as const,
       unit: "stævne",
       evidenceRequirements: "Fotos fra dagen",
       ...offeringInput({ title: "Navnesponsor", priceMinor: 500_000 }),
@@ -171,8 +181,9 @@ describe("association onboarding and publication", () => {
     const { actor, organizationId } = await createOrgWithAdmin("association", "Aktiv klub", "active");
     const [category] = await listActiveCategories(db);
     const input = {
-      categoryId: category.id,
-      unit: "stk.",
+      categoryIds: [category.id],
+      unitCode: "piece" as const,
+      unit: null,
       evidenceRequirements: "Foto",
       ...offeringInput({ priceMinor: 100_000 }),
     };
@@ -201,8 +212,9 @@ describe("association onboarding and publication", () => {
     const { actor, organizationId } = await createOrgWithAdmin("association", "Aktiv klub", "active");
     const [category] = await listActiveCategories(db);
     const offering = await createCustomOffering(db, actor, organizationId, {
-      categoryId: category.id,
-      unit: "stk.",
+      categoryIds: [category.id],
+      unitCode: "piece" as const,
+      unit: null,
       evidenceRequirements: "Foto",
       ...offeringInput(),
     });
@@ -282,7 +294,7 @@ describe("supply access control", () => {
     await expect(
       createStandardOffering(db, b.actor, b.organizationId, {
         templateId: social.id,
-        ...offeringInput({ channelId: channel.id }),
+        ...offeringInput({ channelIds: [channel.id] }),
       }),
     ).rejects.toMatchObject({ code: "forbidden" });
   });
@@ -331,5 +343,140 @@ describe("supply access control", () => {
     expect(await listPublishedOfferings(db, actor)).toHaveLength(0);
     const rows = await db.select().from(associationOfferings);
     expect(rows).toHaveLength(1);
+  });
+
+  it("an offering can have several categories, channels and locations, all owned by the association", async () => {
+    const { actor, organizationId } = await createOrgWithAdmin("association", "Aktiv klub", "active");
+    const other = await createOrgWithAdmin("association", "Anden klub", "active");
+    const categories = await listActiveCategories(db);
+    const [facebook, instagram] = await addChannels(db, actor, organizationId, [
+      {
+        kind: "facebook",
+        name: null,
+        url: "facebook.com/klub",
+        audienceCount: 1200,
+        audienceBasis: "stated",
+      },
+      { kind: "instagram", name: null, url: null, audienceCount: null, audienceBasis: "measured" },
+    ]);
+    const field = await addLocation(db, actor, organizationId, {
+      kind: "field",
+      name: "Bane 1",
+      addressLine: null,
+      postalCode: null,
+      city: null,
+      description: null,
+    });
+    const foreign = await addLocation(db, other.actor, other.organizationId, {
+      kind: "hall",
+      name: "Deres hal",
+      addressLine: null,
+      postalCode: null,
+      city: null,
+      description: null,
+    });
+
+    const input = {
+      categoryIds: [categories[0].id, categories[2].id],
+      unitCode: "season" as const,
+      unit: "ignored when a standard unit is chosen",
+      evidenceRequirements: "Fotos",
+      ...offeringInput({
+        channelIds: [facebook.id, instagram.id],
+        locationIds: [field.id],
+        season: "spring" as const,
+        availableFrom: "2027-03-01",
+        availableTo: "2027-06-30",
+      }),
+    };
+    const offering = await createCustomOffering(db, actor, organizationId, input);
+    expect(offering.categoryIds).toEqual([categories[0].id, categories[2].id]);
+    expect(offering.channelIds).toEqual([facebook.id, instagram.id]);
+    expect(offering.unit).toBe("Sæson");
+    // A preset season clears custom dates.
+    expect(offering.availableFrom).toBeNull();
+
+    const [row] = await listPublishedOfferings(db, actor);
+    expect(row?.id ?? null).toBeNull(); // pending review, not published yet
+    const overview = await getAssociationOverview(db, actor, organizationId);
+    expect(overview.offerings[0].categoryName).toBe(`${categories[0].name}, ${categories[2].name}`);
+
+    // Reordering categories is not a review-relevant change; adding one is.
+    const admin = await createPlatformAdmin();
+    await reviewOffering(db, admin, offering.id, { decision: "approve", note: null });
+    const reordered = await updateOffering(db, actor, offering.id, {
+      ...input,
+      categoryIds: [categories[2].id, categories[0].id],
+    });
+    expect(reordered.status).toBe("approved");
+    const recategorized = await updateOffering(db, actor, offering.id, {
+      ...input,
+      categoryIds: [categories[0].id],
+    });
+    expect(recategorized.status).toBe("pending_review");
+
+    await expect(
+      createCustomOffering(db, actor, organizationId, { ...input, locationIds: [field.id, foreign.id] }),
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      createCustomOffering(db, actor, organizationId, { ...input, categoryIds: [] }),
+    ).rejects.toMatchObject({ code: "validation" });
+    await expect(
+      createCustomOffering(db, actor, organizationId, { ...input, unitCode: "other", unit: null }),
+    ).rejects.toMatchObject({ code: "validation" });
+  });
+
+  it("saves aggregated demographics and rejects shares outside 0–100", async () => {
+    const { actor, organizationId } = await onboardedDraft();
+    const overview = await getAssociationOverview(db, actor, organizationId);
+    expect(overview.profile?.genderMix).toBe("mixed");
+    expect(overview.profile?.audienceSegments).toEqual(["children_youth", "parents_families"]);
+    await expect(
+      saveAssociationProfile(db, actor, organizationId, { ...profile, femaleSharePercent: 120 }),
+    ).rejects.toMatchObject({ code: "validation" });
+  });
+
+  it("channels and locations can be edited, but only by their association", async () => {
+    const { actor, organizationId } = await createOrgWithAdmin("association", "Aktiv klub", "active");
+    const other = await createOrgWithAdmin("association", "Anden klub", "active");
+    const [channel] = await addChannels(db, actor, organizationId, [
+      { kind: "facebook", name: null, url: null, audienceCount: 100, audienceBasis: "stated" },
+    ]);
+    await updateChannel(db, actor, channel.id, {
+      kind: "facebook",
+      name: "Klubbens side",
+      url: null,
+      audienceCount: 150,
+      audienceBasis: "measured",
+    });
+    const location = await addLocation(db, actor, organizationId, {
+      kind: "clubhouse",
+      name: "Klubhuset",
+      addressLine: null,
+      postalCode: null,
+      city: null,
+      description: null,
+    });
+    await updateLocation(db, actor, location.id, {
+      kind: "clubhouse",
+      name: "Klubhuset med skærm",
+      addressLine: null,
+      postalCode: null,
+      city: null,
+      description: "Skærm i cafeteriet",
+    });
+    const overview = await getAssociationOverview(db, actor, organizationId);
+    expect(overview.channels[0]).toMatchObject({ name: "Klubbens side", audienceCount: 150 });
+    expect(overview.locations[0].name).toBe("Klubhuset med skærm");
+    await expect(
+      updateLocation(db, other.actor, location.id, {
+        kind: "clubhouse",
+        name: "Overtaget",
+        addressLine: null,
+        postalCode: null,
+        city: null,
+        description: null,
+      }),
+    ).rejects.toMatchObject({ code: "forbidden" });
   });
 });

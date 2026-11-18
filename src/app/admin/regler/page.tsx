@@ -22,9 +22,11 @@ export default function AdminConfigPage() {
   );
 }
 
-function formatValue(value: unknown): string {
+function formatValue(value: unknown, unit?: "hours" | "basis_points"): string {
   if (value === null || value === undefined) return da.admin.configNotSet;
   if (typeof value === "boolean") return value ? da.common.yes : da.common.no;
+  if (typeof value === "number" && unit === "hours") return da.admin.configHours(value);
+  if (typeof value === "number" && unit === "basis_points") return da.admin.configBasisPoints(value);
   return String(value);
 }
 
@@ -60,7 +62,7 @@ async function ConfigTable() {
                   <div className="text-xs text-muted-foreground">{definition.description}</div>
                 </TableCell>
                 <TableCell className="tabular-nums">
-                  {formatValue(row.value)}
+                  {formatValue(row.value, "unit" in definition ? definition.unit : undefined)}
                   <details className="mt-2">
                     <summary className="cursor-pointer text-xs text-muted-foreground underline">
                       {da.admin.configEdit}
@@ -72,10 +74,14 @@ async function ConfigTable() {
                         label={da.admin.configNewValue}
                         hint={
                           typeof definition.defaultValue === "boolean"
-                            ? "true / false"
-                            : definition.defaultValue === null || row.value === null
-                              ? da.admin.configNullHint
-                              : undefined
+                            ? da.admin.configBooleanHint
+                            : "unit" in definition && definition.unit === "hours"
+                              ? da.admin.configHoursHint
+                              : "unit" in definition && definition.unit === "basis_points"
+                                ? da.admin.configBasisPointsHint
+                                : definition.defaultValue === null || row.value === null
+                                  ? da.admin.configNullHint
+                                  : undefined
                         }
                         defaultValue={row.value === null ? "" : String(row.value)}
                       />

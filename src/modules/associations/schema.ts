@@ -72,6 +72,15 @@ export const associations = pgTable("associations", {
     .array()
     .notNull()
     .default(sql`'{}'::text[]`),
+  /** Aggregated gender mix; codes in `genderMixOptions` (validation.ts). Null = not stated. */
+  genderMix: text("gender_mix"),
+  /** Optional, approximate share of female members in percent (0–100). */
+  femaleSharePercent: integer("female_share_percent"),
+  /** Audience segments the members belong to; codes in `audienceSegmentOptions`. */
+  audienceSegments: text("audience_segments")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
   facilities: text("facilities"),
   /** Explicit VAT treatment: true = prices are excl. 25 % moms; null = not stated. */
   vatRegistered: boolean("vat_registered"),
@@ -199,22 +208,53 @@ export const associationOfferings = pgTable(
       .references(() => organizations.id, { onDelete: "restrict" }),
     kind: offeringKind("kind").notNull(),
     templateId: uuid("template_id").references(() => productTemplates.id, { onDelete: "restrict" }),
-    categoryId: uuid("category_id")
+    /**
+     * One or more catalogue categories (first = primary). Arrays rather than
+     * link tables: categories, channels and locations are archived, never
+     * deleted, and the service validates every id (ADR-016).
+     */
+    categoryIds: uuid("category_ids")
+      .array()
       .notNull()
-      .references(() => catalogCategories.id, { onDelete: "restrict" }),
+      .default(sql`'{}'::uuid[]`),
+    /**
+     * @deprecated Replaced by the id arrays above (migration 0004). Kept,
+     * nullable, while the previous release shares the staging database; a
+     * follow-up migration backfills and drops them (expand/contract, ADR-016).
+     */
+    legacyCategoryId: uuid("category_id").references(() => catalogCategories.id, { onDelete: "restrict" }),
     title: text("title").notNull(),
     description: text("description").notNull(),
+    /** Unit code from `offeringUnitOptions`, or "other" with a free-text `unit`. */
+    unitCode: text("unit_code").notNull().default("other"),
+    /** Display label of the unit (the code's label, or the association's own text). */
     unit: text("unit").notNull(),
     priceMinor: integer("price_minor").notNull(),
     currency: text("currency").notNull().default("DKK"),
     /** How many units the association can deliver in the availability period. */
     capacity: integer("capacity"),
+    /** Season code from `seasonOptions`; "custom" means the dates below apply. */
+    season: text("season").notNull().default("custom"),
     availableFrom: date("available_from"),
     availableTo: date("available_to"),
     availabilityNote: text("availability_note"),
     evidenceRequirements: text("evidence_requirements"),
-    channelId: uuid("channel_id").references(() => associationChannels.id, { onDelete: "restrict" }),
-    locationId: uuid("location_id").references(() => associationLocations.id, { onDelete: "restrict" }),
+    channelIds: uuid("channel_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    locationIds: uuid("location_ids")
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    /** @deprecated See `legacyCategoryId`. */
+    legacyChannelId: uuid("channel_id").references(() => associationChannels.id, { onDelete: "restrict" }),
+    /** @deprecated See `legacyCategoryId`. */
+    legacyLocationId: uuid("location_id").references(() => associationLocations.id, {
+      onDelete: "restrict",
+    }),
+    /** The association's own description of where, when no registered location fits. */
+    locationNote: text("location_note"),
     status: offeringStatus("status").notNull().default("draft"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -225,6 +265,7 @@ export const associationOfferings = pgTable(
   (t) => [
     index("association_offerings_org_idx").on(t.organizationId),
     index("association_offerings_status_idx").on(t.status),
+    index("association_offerings_categories_idx").using("gin", t.categoryIds),
     check("association_offerings_price_check", sql`${t.priceMinor} >= 0`),
     check("association_offerings_capacity_check", sql`${t.capacity} IS NULL OR ${t.capacity} > 0`),
     check(
